@@ -88,7 +88,7 @@ export default function Home() {
       <section aria-labelledby="install" className="mt-20 scroll-mt-8">
         <h2 id="install" className="text-2xl font-semibold tracking-tight">Install for Claude Code</h2>
         <div className="mt-6 max-w-2xl"><Code label="Install command">{INSTALL}</Code></div>
-        <p className="mt-3 text-sm text-muted">The package is not published yet. This is the planned command.</p>
+        <p className="mt-3 text-sm text-muted">Not on npm yet. Until then, build from source (see the GitHub README).</p>
       </section>
 
       <section aria-labelledby="oss" className="mt-20">
