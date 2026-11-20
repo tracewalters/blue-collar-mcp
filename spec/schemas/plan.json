@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": [
+        "schedule_inspection"
+      ]
+    },
+    "connectionId": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "params": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {}
+    }
+  },
+  "required": [
+    "action",
+    "connectionId",
+    "summary",
+    "params"
+  ],
+  "additionalProperties": false
+}

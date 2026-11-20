@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "jurisdiction": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "submitted",
+        "in_review",
+        "corrections_required",
+        "approved",
+        "issued",
+        "inspection_phase",
+        "finaled",
+        "expired",
+        "denied"
+      ]
+    },
+    "appliedAt": {
+      "type": "string"
+    },
+    "expiresAt": {
+      "type": "string"
+    },
+    "feesDue": {
+      "default": 0,
+      "type": "number"
+    }
+  },
+  "required": [
+    "id",
+    "jurisdiction",
+    "type",
+    "address",
+    "status",
+    "appliedAt",
+    "feesDue"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,23 @@
+name: canary
+on:
+  schedule: [{ cron: "0 12 * * *" }]
+  workflow_dispatch:
+permissions: { contents: read, issues: write }
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - id: run
+        run: npm run canary 2>&1 | tee canary.log
+        continue-on-error: true
+      - name: Open an issue if an adapter broke
+        if: steps.run.outcome == 'failure'
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          gh issue create --label adapter-broke \
+            --title "Canary failed $(date -u +%F)" \
+            --body "$(printf 'An adapter canary failed.\n\n```\n%s\n```\n\nSee docs/SELF_IMPROVING.md for the repair steps.' "$(tail -40 canary.log)")"

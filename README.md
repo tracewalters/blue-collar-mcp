@@ -13,31 +13,43 @@ Every city has its own portal, forms, statuses, fees, and inspection rules. Cont
 3. **Jurisdiction adapters**: one plugin per city portal that maps its quirks to the common model.
 4. **Harness packaging**: install configs for Claude, ChatGPT, Codex, Grok (`adapters/`).
 
-## Planned tools (draft)
+## Quick start
+```bash
+git clone https://github.com/tracewalters/Permit-MCP && cd Permit-MCP
+npm install && npm run build
+node dist/cli.js login          # pick cities, log in once each (try the "Demo City": demo / demo)
+claude mcp add permit -- node "$PWD/dist/mcp.js"
+```
+Then ask Claude: "What's the status of all my open permits?"
+
+Every function is also a CLI: `permit permits`, `permit inspections`, `permit schedule`, `permit commit`. The MCP and the CLI share one implementation (`src/service.ts`).
+
+## Tools
 | Tool | Purpose |
 |---|---|
-| `list_permits` | All permits across projects and jurisdictions, filterable by status |
-| `get_permit` | Full detail and history for one permit |
-| `get_permit_status` | Live status from the city portal |
-| `list_inspections` | Upcoming, passed, failed, and needed inspections |
-| `schedule_inspection` | Request an inspection (confirmation required) |
-| `list_required_documents` | What a jurisdiction needs for a permit type |
-| `get_jurisdiction` | Portal, fees, turnaround, and rules for a city |
-| `get_deadlines` | Expirations, resubmittals, and inspection windows |
+| `list_connections` | Cities you are logged into |
+| `list_permits` | Permits across all connected cities |
+| `get_permit` | Detail and inspections for one permit |
+| `list_inspections` | Needed, scheduled, passed, failed |
+| `propose_inspection` | Step 1 of a write. Changes nothing |
+| `commit_action` | Step 2. Runs only after you approve a prompt |
 
-Write actions (submit, schedule, pay) always require explicit user confirmation.
+Passwords never go through chat. You enter them in the terminal (`permit login`). They are stored encrypted (AES-256-GCM) on your machine.
+
+## Status
+Working end to end with the fixture-backed **demo** adapter. Real adapters for Salesforce/Shape-Phoenix, Tyler, Accela, and OpenGov are **planned, not built yet**. See `docs/CONTRIBUTING.md` to add one.
 
 ## Repo layout
 ```
+src/         CLI, MCP server, service layer, vault, adapters
+data/        Jurisdiction list
+test/        Tests (node:test)
+apps/web/    Marketing, docs, billing and usage site
 spec/        Standard text and JSON schemas
-src/         Reference MCP server (tools, jurisdiction adapters)
-adapters/    Per-harness install configs (codex, chatgpt, claude, grok)
-examples/    Sample data and prompts
-docs/        Guides and contributor docs
+adapters/    Per-harness install configs
+docs/        Architecture, vision, self-improving loop, contributing
 ```
-
-## Status
-Early draft. Nothing is implemented yet. See `spec/README.md`.
+See `VISION.md` and `docs/ARCHITECTURE.md`.
 
 ## License
 MIT

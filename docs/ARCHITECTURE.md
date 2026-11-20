@@ -27,7 +27,11 @@ Claude (or any MCP client)
  apps/web      marketing/docs + account, billing, usage. Read-mostly. No portal actions.
 ```
 
-## Repo layout
+## Repo layout (target)
+
+Today: a single package at the repo root (`src/`), plus `apps/web`. It splits into the packages below only when the hosted server needs it.
+
+## Repo layout (target, later)
 
 ```
 apps/

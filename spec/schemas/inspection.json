@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "permitId": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "needed",
+        "scheduled",
+        "passed",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "scheduledFor": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "permitId",
+    "type",
+    "status"
+  ],
+  "additionalProperties": false
+}

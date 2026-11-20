@@ -1,0 +1,36 @@
+{
+  "name": "permit-mcp",
+  "version": "0.1.0",
+  "description": "One MCP and CLI for every permit portal. Log in once, then read and act on permits from Claude.",
+  "license": "MIT",
+  "type": "module",
+  "repository": "github:tracewalters/Permit-MCP",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "permit": "dist/cli.js",
+    "permit-mcp": "dist/mcp.js"
+  },
+  "files": [
+    "dist",
+    "data"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/*.test.ts",
+    "canary": "node src/canary.ts",
+    "schemas": "node scripts/gen-schemas.ts",
+    "dev:cli": "node src/cli.ts",
+    "dev:mcp": "node src/mcp.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2"
+  }
+}
