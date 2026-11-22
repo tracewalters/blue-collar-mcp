@@ -1,55 +1,32 @@
-# Permit MCP Standard
+# Blue Collar MCP
 
-An open standard and reference [MCP](https://modelcontextprotocol.io) server for building permits, so any AI harness (Claude, ChatGPT, Codex, Grok) can manage permits and inspections the same way.
+Guided AI for residential trades, inside Claude chat. A shared company brain, trade rule packs, and step-by-step workflows for people who have never used AI.
 
-**For:** general contractors, subcontractors, and anyone in residential building juggling permits across multiple city portals and inspections.
+**For:** architects, drafters, interior designers, landscape and pool designers, GCs, home builders, and subs (electrical, plumbing, and more). Owner-run shops and small teams.
 
-## The problem
-Every city has its own portal, forms, statuses, fees, and inspection rules. Contractors track it all by hand across tabs, emails, and spreadsheets.
+## Promise
+- **One source of truth.** Owner and team get the same answer from the same live data. Stale data is flagged.
+- **Guided, not technical.** Type `/brain-setup`. Claude asks multiple-choice questions and gives exact links and steps.
+- **Trade-smart.** Rule packs keep answers short and right for residential construction.
 
-## What this standard defines
-1. **Common data model**: Permit, Project, Inspection, Jurisdiction, Document, Fee, Status (`spec/schemas/`).
-2. **Standard MCP tools**: the same tool names and shapes regardless of city or harness.
-3. **Jurisdiction adapters**: one plugin per city portal that maps its quirks to the common model.
-4. **Harness packaging**: install configs for Claude, ChatGPT, Codex, Grok (`adapters/`).
+## Packages
+Setup flows for each are mapped in [`docs/ONBOARDING.md`](docs/ONBOARDING.md).
 
-## Quick start
-```bash
-git clone https://github.com/tracewalters/Permit-MCP && cd Permit-MCP
-npm install && npm run build
-node dist/cli.js login          # pick cities, log in once each (try the "Demo City": demo / demo)
-claude mcp add permit -- node "$PWD/dist/mcp.js"
-```
-Then ask Claude: "What's the status of all my open permits?"
+| Package | Command | Status |
+|---|---|---|
+| `brain` company memory: clients, jobs, meetings, decisions | `/brain-setup` | v1 |
+| `rules` rule packs or your own | `/rules-setup` | v1 |
+| `permits` any Phoenix-metro city portal, via portal CLIs | `/permits-setup` | v1, core built (`src/`) |
+| `books` QuickBooks and bookkeeping | `/books-setup` | v1.5, read-only first |
+| `crm` Jobber, JobTread, Buildertrend, HubSpot adapters | `/crm-setup` | v1.5 |
+| `inventory` stock lookup and ordering (Pool Corp, Home Depot) | `/inventory-setup` | v2 |
+| `subs`, `field`, `docs`, `comms` | later | stubs |
 
-Every function is also a CLI: `permit permits`, `permit inspections`, `permit schedule`, `permit commit`. The MCP and the CLI share one implementation (`src/service.ts`).
+## Where the code is today
+The permit engine (schemas, adapter SDK, CLI, MCP server, canary) lives in `src/`. It becomes `packages/permits` when the hosted server needs the split. `apps/web` is the marketing and account site. `packages/*` and `rule-packs/*` hold the product plan for now.
 
-## Tools
-| Tool | Purpose |
-|---|---|
-| `list_connections` | Cities you are logged into |
-| `list_permits` | Permits across all connected cities |
-| `get_permit` | Detail and inspections for one permit |
-| `list_inspections` | Needed, scheduled, passed, failed |
-| `propose_inspection` | Step 1 of a write. Changes nothing |
-| `commit_action` | Step 2. Runs only after you approve a prompt |
+## Related
+RIG / Stanley 2.0 is the private self-hosted system for Walters Renovations. This is the friendly public product. Walters rules can seed one rule pack. No Walters data lives here.
 
-Passwords never go through chat. You enter them in the terminal (`permit login`). They are stored encrypted (AES-256-GCM) on your machine.
-
-## Status
-Working end to end with the fixture-backed **demo** adapter. Real adapters for Salesforce/Shape-Phoenix, Tyler, Accela, and OpenGov are **planned, not built yet**. See `docs/CONTRIBUTING.md` to add one.
-
-## Repo layout
-```
-src/         CLI, MCP server, service layer, vault, adapters
-data/        Jurisdiction list
-test/        Tests (node:test)
-apps/web/    Marketing, docs, billing and usage site
-spec/        Standard text and JSON schemas
-adapters/    Per-harness install configs
-docs/        Architecture, vision, self-improving loop, contributing
-```
-See `VISION.md` and `docs/ARCHITECTURE.md`.
-
-## License
-MIT
+## Hosting and license
+One multi-tenant server on a Hostinger VPS, free to start, usage-based paid tiers ([`docs/MONETIZATION.md`](docs/MONETIZATION.md)). MIT.
