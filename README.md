@@ -1,55 +1,40 @@
-# Permit MCP Standard
+# Blue Collar MCP
 
-An open standard and reference [MCP](https://modelcontextprotocol.io) server for building permits, so any AI harness (Claude, ChatGPT, Codex, Grok) can manage permits and inspections the same way.
+An MCP server that gives residential trades a shared company brain, trade rules, and guided workflows inside Claude chat. Built for people who have never used AI.
 
-**For:** general contractors, subcontractors, and anyone in residential building juggling permits across multiple city portals and inspections.
+**For:** architects, drafters, interior designers, landscape and pool designers, GCs, home builders, and subs (electrical, plumbing, etc.). Mostly owner-run shops and small teams.
 
-## The problem
-Every city has its own portal, forms, statuses, fees, and inspection rules. Contractors track it all by hand across tabs, emails, and spreadsheets.
+## Promise
+- **One source of truth.** The owner and the team get the same answer, from the same live data. Stale data gets flagged.
+- **Guided, not technical.** Type a command (`/brain-setup`). Claude asks multiple-choice questions and walks you through each step with exact links.
+- **Trade-smart.** Rule packs make answers short and correct for residential construction.
 
-## What this standard defines
-1. **Common data model**: Permit, Project, Inspection, Jurisdiction, Document, Fee, Status (`spec/schemas/`).
-2. **Standard MCP tools**: the same tool names and shapes regardless of city or harness.
-3. **Jurisdiction adapters**: one plugin per city portal that maps its quirks to the common model.
-4. **Harness packaging**: install configs for Claude, ChatGPT, Codex, Grok (`adapters/`).
+## Packages
+Each package has its own guided setup command. Maps live in [`docs/ONBOARDING.md`](docs/ONBOARDING.md).
 
-## Quick start
-```bash
-git clone https://github.com/tracewalters/Permit-MCP && cd Permit-MCP
-npm install && npm run build
-node dist/cli.js login          # pick cities, log in once each (try the "Demo City": demo / demo)
-claude mcp add permit -- node "$PWD/dist/mcp.js"
+| Package | Command | Status |
+|---|---|---|
+| `brain` company memory, meetings, clients, jobs, decisions | `/brain-setup` | v1 |
+| `rules` rule packs and custom rules | `/rules-setup` | v1 |
+| `permits` any Phoenix-metro city portal, via portal CLIs | `/permits-setup` | v1 |
+| `books` QuickBooks and bookkeeping | `/books-setup` | v1.5, read-only first |
+| `crm` adapters for Jobber, JobTread, Buildertrend, HubSpot, etc. | `/crm-setup` | v1.5 |
+| `inventory` stock lookup and ordering (Pool Corp, Home Depot, etc.) | `/inventory-setup` | v2 |
+| `subs`, `field`, `docs`, `comms` | later | stubs |
+
+## Not this repo
+RIG / Stanley 2.0 is the private, self-hosted power system for Walters Renovations. This is the friendly public product. Walters rules become one rule pack here. Walters data never goes in this repo.
+
+## Hosting
+One multi-tenant server on a Hostinger VPS. Each company is its own tenant. Users sign in per person, and the owner connects it once in Claude.
+
+## Layout
 ```
-Then ask Claude: "What's the status of all my open permits?"
-
-Every function is also a CLI: `permit permits`, `permit inspections`, `permit schedule`, `permit commit`. The MCP and the CLI share one implementation (`src/service.ts`).
-
-## Tools
-| Tool | Purpose |
-|---|---|
-| `list_connections` | Cities you are logged into |
-| `list_permits` | Permits across all connected cities |
-| `get_permit` | Detail and inspections for one permit |
-| `list_inspections` | Needed, scheduled, passed, failed |
-| `propose_inspection` | Step 1 of a write. Changes nothing |
-| `commit_action` | Step 2. Runs only after you approve a prompt |
-
-Passwords never go through chat. You enter them in the terminal (`permit login`). They are stored encrypted (AES-256-GCM) on your machine.
+core/         shared data model and schemas
+packages/     one folder per package (tools, onboarding flow)
+rule-packs/   starter rule sets by trade
+docs/         architecture, onboarding maps, monetization, research
+```
 
 ## Status
-Working end to end with the fixture-backed **demo** adapter. Real adapters for Salesforce/Shape-Phoenix, Tyler, Accela, and OpenGov are **planned, not built yet**. See `docs/CONTRIBUTING.md` to add one.
-
-## Repo layout
-```
-src/         CLI, MCP server, service layer, vault, adapters
-data/        Jurisdiction list
-test/        Tests (node:test)
-apps/web/    Marketing, docs, billing and usage site
-spec/        Standard text and JSON schemas
-adapters/    Per-harness install configs
-docs/        Architecture, vision, self-improving loop, contributing
-```
-See `VISION.md` and `docs/ARCHITECTURE.md`.
-
-## License
-MIT
+Planning. Nothing implemented. License: MIT.
