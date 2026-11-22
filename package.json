@@ -4,13 +4,14 @@
   "description": "One MCP and CLI for every permit portal. Log in once, then read and act on permits from Claude.",
   "license": "MIT",
   "type": "module",
-  "repository": "github:tracewalters/Permit-MCP",
+  "repository": "github:tracewalters/blue-collar-mcp",
   "engines": {
     "node": ">=22"
   },
   "bin": {
     "permit": "dist/cli.js",
-    "permit-mcp": "dist/mcp.js"
+    "permit-mcp": "dist/mcp.js",
+    "blue-collar-mcp-server": "dist/server.js"
   },
   "files": [
     "dist",
@@ -23,7 +24,8 @@
     "canary": "node src/canary.ts",
     "schemas": "node scripts/gen-schemas.ts",
     "dev:cli": "node src/cli.ts",
-    "dev:mcp": "node src/mcp.ts"
+    "dev:mcp": "node src/mcp.ts",
+    "dev:hosted": "node src/server.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",

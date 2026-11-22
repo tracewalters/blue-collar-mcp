@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
@@ -14,7 +15,9 @@ export type Note = { type: NoteType; slug: string; title: string; source: string
 const STALE_DAYS = 90;
 const LIVE: NoteType[] = ["client", "job", "meeting"];
 
-export const brainDir = () => join(process.env.BRAIN_DIR ?? home(), "brain");
+/** Hosted mode runs each request inside a tenant, so every company gets its own brain folder. */
+export const tenantDir = new AsyncLocalStorage<string>();
+export const brainDir = () => tenantDir.getStore() ?? join(process.env.BRAIN_DIR ?? home(), "brain");
 export const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
 const file = (type: NoteType, slug: string) => join(brainDir(), type, `${slugify(slug)}.md`);
 
