@@ -13,7 +13,7 @@ const items = [
   { id: "2", source: "gmail", date: "2026-11-01", from: "jane@x.com", subject: "Re: Pool", body: "New number 480-555-0199 please. Same site 12 Oak St." },
   { id: "3", source: "gmail", date: "2026-10-05", from: "deals@shop.com", subject: "50% off sale ends", body: "limited time", unsubscribe: true },
   { id: "4", source: "gmail", date: "2026-10-10", from: "noreply@bank.com", subject: "Payment received", body: "Thank you for your payment of $2,500.00" },
-  { id: "5", source: "quickbooks", date: "2026-10-10", structured: { customer: "noreply@bank.com", amount: 2500 } },
+  { id: "5", source: "quickbooks", date: "2026-10-10", structured: { customer: "noreply@bank.com", kind: "payment", amount: 2500 } },
 ];
 
 test("noise dropped, receipts kept, quotes stripped", () => {
@@ -63,4 +63,21 @@ test("amounts of 1000 or more parse correctly with or without commas", () => {
   assert.equal(amt("Paid $2,500.00"), 2500);
   assert.equal(amt("Paid $12,345"), 12345);
   assert.equal(amt("Deposit $750"), 750);
+});
+
+test("a number mentioned mid-email is not the sender's phone", () => {
+  const body = "Hi Trace, thanks for the call. I referred you to Joel Watson, you can reach him at 480-330-0803 about the grading.\n\nWe will send plans Friday and review them with the city next week.\n\nTobin Kopp\nOrangewood Engineering\n623-229-5055";
+  const phones = ing.extract({ id: "p", source: "gmail", date: "2026-11-16", from: "tobin@x.com", subject: "Referral", body }, "human").filter((f) => f.field === "phone").map((f) => f.value);
+  assert.deepEqual(phones, ["6232295055"]);
+  const own = ing.extract({ id: "q", source: "gmail", date: "2026-11-16", from: "a@x.com", subject: "hi", body: "Please call me at 602-555-0101 tomorrow.\n\n" + "x ".repeat(200) }, "human").filter((f) => f.field === "phone");
+  assert.equal(own.length, 1);
+});
+
+test("bills and CRM deal values are not payments", () => {
+  const f = (o: object, kind = "receipt") => ing.extract({ id: "m", source: "gmail", date: "2026-11-09", from: "v@x.com", subject: "Invoice", ...o }, kind).map((x) => x.field);
+  assert.deepEqual(f({ body: "Balance due $64,050.01" }), ["invoice"]);
+  assert.deepEqual(f({ body: "Payment request for your tile order $47.75" }), ["invoice"]);
+  assert.deepEqual(f({ subject: "Receipt", body: "Thank you for your payment of $2,500.00" }), ["payment"]);
+  assert.deepEqual(ing.extract({ id: "c", source: "crm", date: "2026-11-09", structured: { email: "mcgraw@x.com", amount: 145000 } }, "structured").map((x) => x.field), [], "deal value ignored");
+  assert.deepEqual(ing.extract({ id: "c2", source: "crm", date: "2026-11-09", structured: { email: "mcgraw@x.com", kind: "payment", amount: 5000 } }, "structured").map((x) => x.field), ["payment"]);
 });

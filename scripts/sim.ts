@@ -32,9 +32,9 @@ for (let d = 0; d < 90; d++) {
   }
 }
 // Planted problems: 5 clients changed phone number, 5 payments also appear in QuickBooks.
-for (let i = 0; i < 5; i++) add("keep", { id: `new${i}`, source: "gmail", date: day(1), from: clients[i].email, subject: "New number", body: `Use 602-555-${9000 + i} now.` });
+for (let i = 0; i < 5; i++) add("keep", { id: `new${i}`, source: "gmail", date: day(1), from: clients[i].email, subject: "New number", body: `Use my new number 602-555-${9000 + i} now.` });
 const pay = items.filter((x) => x.item.subject === "Receipt").slice(0, 5);
-for (const [i, p] of pay.entries()) add("keep", { id: `qb${i}`, source: "quickbooks", date: p.item.date, structured: { customer: p.item.from!, amount: Number(p.item.body!.match(/\$(\d+)/)![1]) } });
+for (const [i, p] of pay.entries()) add("keep", { id: `qb${i}`, source: "quickbooks", date: p.item.date, structured: { customer: p.item.from!, kind: "payment", amount: Number(p.item.body!.match(/\$(\d+)/)![1]) } });
 
 const t0 = performance.now();
 const res = ing.run(items.map((x) => x.item));

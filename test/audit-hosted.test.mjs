@@ -32,9 +32,15 @@ test('built hosted MCP initializes, lists brain tools, and restricts access to p
       const client = new Client({ name:'audit', version:'1.0.0' });
       try {
         await client.connect(new StreamableHTTPClientTransport(new URL(endpoint)));
-        assert.deepEqual((await client.listTools()).tools.map(t => t.name).sort(), ['brain_get', 'brain_save', 'brain_search', 'ingest_confirm', 'ingest_review', 'ingest_run']);
+        assert.deepEqual((await client.listTools()).tools.map(t => t.name).sort(), ['brain_configure', 'brain_get', 'brain_save', 'brain_search', 'brain_status', 'ingest_confirm', 'ingest_review', 'ingest_run']);
         const result = await client.callTool({ name:'brain_search', arguments: {query:'fixture'} });
         assert.deepEqual(JSON.parse(result.content[0].text), []);
+        const status = JSON.parse((await client.callTool({ name:'brain_status', arguments:{} })).content[0].text);
+        assert.equal(status.setup, false);
+        assert.match(status.downloadAll, /export\.tar\.gz$/);
+        assert.equal(JSON.parse((await client.callTool({ name:'brain_configure', arguments:{storage:'hosted'} })).content[0].text).saved, 'hosted');
+        const dl = await fetch(endpoint.replace(/mcp$/, 'export.tar.gz'));
+        assert.equal(dl.status, 200);
         const missing = await client.callTool({ name:'brain_get', arguments: {type:'job',slug:'missing'} });
         assert.equal(missing.isError, true);
         const draft = await client.callTool({ name:'brain_save', arguments: {type:'job',title:'Fixture',body:'Unsigned'} });

@@ -25,3 +25,11 @@ test("old live notes are flagged stale", () => {
 test("missing note errors clearly", () => {
   assert.throws(() => brain.getNote("job", "nope"), /No job note/);
 });
+
+test("storage choice and stats are recorded per brain", () => {
+  assert.deepEqual(brain.getConfig(), {});
+  brain.setConfig({ storage: "obsidian" });
+  assert.equal(brain.getConfig().storage, "obsidian");
+  const st = brain.brainStats();
+  assert.ok(st.total >= 1 && st.lastUpdated);
+});

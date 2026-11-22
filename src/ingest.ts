@@ -13,7 +13,7 @@ export type Item = {
   unsubscribe?: boolean;                       // has a List-Unsubscribe header
   structured?: Record<string, string | number>; // CRM / QuickBooks rows: skip text parsing
 };
-export type Fact = { field: "phone" | "address" | "email" | "payment"; value: string; entity: string; source: string; ref: string; date: string; amount?: number };
+export type Fact = { field: "phone" | "address" | "email" | "payment" | "invoice"; value: string; entity: string; source: string; ref: string; date: string; amount?: number };
 type State = { seen: Record<string, 1>; facts: Fact[]; resolved: Record<string, string> };
 
 const dir = () => join(brainDir(), "..", "_ingest");
@@ -51,17 +51,30 @@ const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9@.]+/g, " ").trim()
 const normPhone = (s: string) => { const d = s.replace(/\D/g, ""); return d.length === 11 && d[0] === "1" ? d.slice(1) : d; };
 const entityOf = (from = "") => (from.match(/[\w.+-]+@[\w-]+(\.[\w-]+)+/)?.[0] ?? from).toLowerCase();
 
+// A number counts as the sender's own only with a first-person cue nearby or in the signature zone.
+// Numbers mentioned mid-email ("call Joel at ...") are someone else's and are not attributed.
+const OWN_CUE = /\b(my|our|cell|mobile|office|direct|call me|text me|reach me|phone|tel|ph)\b[^.\n]{0,30}$/i;
+const PAID = /\b(paid|payment (?:received|of|confirmation)|thank you for your payment|received your payment|deposit (?:received|paid)|zelle|venmo|receipt|cleared)\b/i;
+
 export const extract = (it: Item, kind: string): Fact[] => {
   const ref = it.id, base = { source: it.source, ref, date: it.date };
   const entity = entityOf(it.from ?? String(it.structured?.email ?? it.structured?.customer ?? ""));
   if (!entity) return [];
   const out: Fact[] = [];
   const text = it.structured ? Object.values(it.structured).join("\n") : clean(it.body);
-  for (const m of text.matchAll(/(?:\+?1[ .-]?)?\(?\b(\d{3})\)?[ .-]?(\d{3})[ .-]?(\d{4})\b/g)) out.push({ ...base, field: "phone", entity, value: normPhone(m[0]) });
+  for (const m of text.matchAll(/(?:\+?1[ .-]?)?\(?\b(\d{3})\)?[ .-]?(\d{3})[ .-]?(\d{4})\b/g)) {
+    const own = it.structured || OWN_CUE.test(text.slice(Math.max(0, m.index - 45), m.index)) || m.index >= text.length - 120;
+    if (own) out.push({ ...base, field: "phone", entity, value: normPhone(m[0]) });
+  }
   for (const m of text.matchAll(/\b\d{2,6}\s+(?:[NSEW]\.?\s+)?[A-Z][A-Za-z]+(?:\s[A-Z][A-Za-z]+)?\s(?:St|Street|Ave|Avenue|Rd|Road|Dr|Drive|Ln|Lane|Blvd|Way|Ct|Court|Cir|Circle|Pl|Place)\b\.?/g)) out.push({ ...base, field: "address", entity, value: m[0].replace(/\.$/, "") });
-  if (kind === "receipt" || it.structured?.amount !== undefined) {
-    const amounts = it.structured?.amount !== undefined ? [Number(it.structured.amount)] : [...text.matchAll(MONEY)].map((m) => Number(`${m[1].replace(/,/g, "")}.${m[2] ?? "00"}`));
-    if (amounts.length) { const amount = Math.max(...amounts); out.push({ ...base, field: "payment", entity, amount, value: `${it.date.slice(0, 10)}|${amount.toFixed(2)}` }); }
+  // Money: only money that actually moved is a payment. Bills and balances are invoices. CRM deal values are neither.
+  const amounts = it.structured
+    ? (it.structured.kind === "payment" || it.structured.kind === "invoice") && it.structured.amount !== undefined ? [Number(it.structured.amount)] : []
+    : kind === "receipt" ? [...text.matchAll(MONEY)].map((m) => Number(`${m[1].replace(/,/g, "")}.${m[2] ?? "00"}`)) : [];
+  if (amounts.length) {
+    const amount = Math.max(...amounts);
+    const paid = it.structured ? it.structured.kind === "payment" : PAID.test(`${it.subject ?? ""} ${text}`);
+    out.push({ ...base, field: paid ? "payment" : "invoice", entity, amount, value: `${it.date.slice(0, 10)}|${amount.toFixed(2)}` });
   }
   return out;
 };
@@ -83,7 +96,7 @@ export const run = (items: Item[], dryRun = false) => {
   }
   if (!dryRun) save(st);
   const r = dryRun ? null : review();
-  return { dryRun, ...stats, ...(r ? { toReview: { cleanFacts: r.clean.length, conflicts: r.conflicts.length, payments: r.payments.length } } : {}) };
+  return { dryRun, ...stats, ...(r ? { toReview: { cleanFacts: r.clean.length, conflicts: r.conflicts.length, paymentsReceived: r.payments.length, invoicesOrBalances: r.invoices.length } } : {}) };
 };
 
 type Group = { id: string; entity: string; field: Fact["field"]; candidates: { value: string; sources: string[]; count: number; lastSeen: string }[] };
@@ -94,7 +107,7 @@ export const review = () => {
   const st = load();
   const by = new Map<string, Group>();
   for (const f of st.facts) {
-    if (f.field === "payment") continue;
+    if (f.field === "payment" || f.field === "invoice") continue;
     const id = gid(f.entity, f.field);
     if (st.resolved[id]) continue;
     const g = by.get(id) ?? { id, entity: f.entity, field: f.field, candidates: [] };
@@ -112,7 +125,9 @@ export const review = () => {
     if (!p.sources.includes(f.source)) p.sources.push(f.source);
     payments.set(k, p);
   }
+  const invoices = st.facts.filter((f) => f.field === "invoice").map((f) => ({ entity: f.entity, date: f.date.slice(0, 10), amount: f.amount!, source: f.source }));
   return {
+    invoices,
     clean: groups.filter((g) => g.candidates.length === 1),
     conflicts: groups.filter((g) => g.candidates.length > 1).map((g) => ({ ...g, candidates: g.candidates.sort((a, b) => b.lastSeen.localeCompare(a.lastSeen)) })),
     payments: [...payments.values()].sort((a, b) => a.date.localeCompare(b.date)),

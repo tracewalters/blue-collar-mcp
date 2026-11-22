@@ -7,7 +7,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { BRAIN_INSTRUCTIONS, registerBrain } from "./brain-tools.ts";
 import { registerIngest } from "./ingest-tools.ts";
-import { tenantDir } from "./brain.ts";
+import { requestInfo, tenantDir } from "./brain.ts";
+import { spawn } from "node:child_process";
 import { home } from "./vault.ts";
 
 /**
@@ -55,9 +56,15 @@ const tenantFor = (secret: string) => {
 };
 
 const handle = async (req: import("node:http").IncomingMessage, res: import("node:http").ServerResponse) => {
-  const m = req.url?.match(/^\/t\/([\w-]+)\/mcp\/?$/);
+  const m = req.url?.match(/^\/t\/([\w-]+)\/(mcp|export\.tar\.gz)\/?$/);
   const dir = m ? tenantFor(m[1]) : null;
-  if (!dir) { res.writeHead(404).end("Not found"); return; }
+  if (!dir || !m) { res.writeHead(404).end("Not found"); return; }
+  if (m[2] === "export.tar.gz") {
+    // Whole brain as plain markdown files. Opens directly in Obsidian.
+    res.writeHead(200, { "content-type": "application/gzip", "content-disposition": 'attachment; filename="company-brain.tar.gz"' });
+    spawn("tar", ["czf", "-", "-C", dir, "."]).stdout.pipe(res);
+    return;
+  }
   if (req.method !== "POST") { res.writeHead(405, { allow: "POST" }).end(); return; }
   const server = new McpServer({ name: "blue-collar-mcp", version: "0.1.0" }, { instructions: BRAIN_INSTRUCTIONS });
   registerBrain(server);
@@ -65,7 +72,8 @@ registerIngest(server);
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   res.on("close", () => { transport.close(); server.close(); });
   await server.connect(transport);
-  await tenantDir.run(dir, () => transport.handleRequest(req, res));
+  const base = process.env.BCMCP_PUBLIC_URL ?? `http://${req.headers.host}`;
+  await requestInfo.run({ exportUrl: `${base}/t/${m[1]}/export.tar.gz` }, () => tenantDir.run(dir, () => transport.handleRequest(req, res)));
 };
 
 if (process.argv[1]?.endsWith("server.ts") || process.argv[1]?.endsWith("server.js")) {

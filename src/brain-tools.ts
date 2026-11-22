@@ -13,13 +13,31 @@ export const BRAIN_INSTRUCTIONS = [
   "Blue Collar MCP is this company's second brain for residential construction.",
   "For ANY question about a client, job, sub, vendor, payment, permit, meeting or past decision, call brain_search FIRST and answer from it. Cite the note and its updated date.",
   "If a result has stale:true, say it may be out of date and offer to refresh it. If nothing matches, say the brain has no record, then offer to look in connected sources and save what you find.",
-  "Keep answers short and in plain English. Never invent facts. Writes are previewed first and saved only after the user says yes.",
+  "Keep EVERY reply under 6 short lines, plain English, no headers. Always say where data lives when relevant. Never invent facts. Writes are previewed first and saved only after the user says yes.",
 ].join(" ");
 
 /** Brain tools and the /brain-setup prompt. Shared by local stdio and hosted HTTP. */
 export const registerBrain = (server: McpServer) => {
 const noteType = z.enum(brain.NoteType.options);
   
+  server.registerTool("brain_status", {
+    description: "Where the brain is stored, how many notes it has, and whether setup was done. Call this FIRST in any setup or when asked where things are kept.",
+    annotations: { readOnlyHint: true },
+  }, () => run(() => {
+    const cfg = brain.getConfig(), info = brain.requestInfo.getStore();
+    return {
+      setup: Boolean(cfg.storage), storage: cfg.storage ?? null,
+      whereItLives: "On your Blue Collar server, in a private folder only your company's connector can read. Plain markdown notes, one file per client, job, payment and so on.",
+      downloadAll: info?.exportUrl ?? "available on the hosted server",
+      ...brain.brainStats(),
+    };
+  })());
+
+  server.registerTool("brain_configure", {
+    description: "Record where the owner wants their brain. Only after they chose. hosted works now. obsidian works now as a one-click download of all notes (live two-way sync is coming). drive and notion are coming: save the choice, the brain stays hosted meanwhile.",
+    inputSchema: { storage: z.enum(["hosted", "obsidian", "drive", "notion"]) },
+  }, ({ storage }) => run(() => { brain.setConfig({ storage }); return { saved: storage, note: storage === "hosted" || storage === "obsidian" ? "Ready." : "Not built yet. Stored on the Blue Collar server for now; you can download everything any time." }; })());
+
   server.registerTool("brain_search", {
     description: "Search the company brain (clients, jobs, meetings, decisions, rules). Results flagged stale:true are old live data: say so and suggest updating before relying on them.",
     inputSchema: { query: z.string(), type: noteType.optional() }, annotations: { readOnlyHint: true },
@@ -49,14 +67,14 @@ const noteType = z.enum(brain.NoteType.options);
   })())
   
   server.registerPrompt("brain-setup", {
-    description: "Build your company brain.",
+    description: "Set up and fill your company brain.",
   }, () => ({ messages: [{ role: "user", content: { type: "text", text: [
-    "Build the company brain now. Be decisive and brief: make the choices yourself, do not quiz the user.",
-    "Defaults: hosted brain, all connected sources (Gmail, Drive, CRM, QuickBooks, texts, notes), last 90 days first, then keep going back in time on your own.",
-    "1. Pull items from every connected source in the biggest batches you can and send them to ingest_run. Do not dry run. Do not ask permission. Keep paging until a source is done.",
-    "2. Call ingest_review. Then ask the user at most ONE bundled yes: 'Save N clean facts and M payments?' (ingest_confirm with allClean, payments true, then repeat with the approvalToken after yes).",
-    "3. Show only real conflicts (sources disagree), one at a time, newest first, with sources and dates. Never guess.",
-    "4. Finish with a 3-line summary and tell them: from now on ask anything about clients, jobs, payments or decisions and you will check the brain first.",
-    "Never ask for passwords or keys in chat. Never invent facts.",
+    "Set up the company brain. Replies under 6 lines.",
+    "Step 1: call brain_status. If setup is false, ask ONE multiple-choice question and nothing else: 'Where should your company brain live? A) On the Blue Collar server (recommended, works now)  B) Obsidian (same, plus a one-click download of every note as Obsidian files)  C) Google Drive (coming soon)  D) Notion (coming soon)'. Then call brain_configure.",
+    "Step 2: tell them in one line where it lives (use whereItLives and the downloadAll link).",
+    "Step 3: pull from every connected source in big batches into ingest_run. No dry runs, no permission questions. Money only counts as payment when it was actually received; CRM deal values and quotes are NOT payments.",
+    "Step 4: ingest_review, then ONE bundled yes: 'Save N facts, M payments?'. Only real conflicts get shown, one at a time.",
+    "Step 5: finish in 3 lines, including that from now on you check the brain first for any question.",
+    "Never ask for passwords. Never invent facts.",
   ].join("\n") } }] }));
 };

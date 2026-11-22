@@ -79,3 +79,20 @@ export const searchNotes = (query: string, type?: NoteType, limit = 10) => {
     stale: note.stale, snippet: note.body.slice(0, 300),
   }));
 };
+
+/** Per-request info (hosted): where the owner can download their brain. */
+export const requestInfo = new AsyncLocalStorage<{ exportUrl?: string; company?: string }>();
+const configFile = () => join(brainDir(), "..", "config.json");
+export type BrainConfig = { storage?: "hosted" | "obsidian" | "drive" | "notion"; chosenAt?: string };
+export const getConfig = (): BrainConfig => { try { return JSON.parse(readFileSync(configFile(), "utf8")); } catch { return {}; } };
+export const setConfig = (c: BrainConfig) => { mkdirSync(join(brainDir(), ".."), { recursive: true }); writeFileSync(configFile(), JSON.stringify({ ...c, chosenAt: new Date().toISOString().slice(0, 10) })); };
+export const brainStats = () => {
+  const counts: Record<string, number> = {}; let last = "";
+  for (const t of NoteType.options) {
+    let files: string[] = [];
+    try { files = readdirSync(join(brainDir(), t)).filter((f) => f.endsWith(".md")); } catch { continue; }
+    counts[t] = files.length;
+    for (const f of files) { const u = parse(t, f.slice(0, -3), readFileSync(join(brainDir(), t, f), "utf8")).updated; if (u > last) last = u; }
+  }
+  return { counts, total: Object.values(counts).reduce((a, b) => a + b, 0), lastUpdated: last || null };
+};

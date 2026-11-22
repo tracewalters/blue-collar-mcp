@@ -9,7 +9,7 @@ const run = (fn: () => unknown) => { try { return reply(fn()); } catch (e) { ret
 const item = z.object({
   id: z.string(), source: z.string().describe("gmail, crm, quickbooks, text, drive..."), date: z.string().describe("ISO date"),
   from: z.string().optional(), subject: z.string().optional(), body: z.string().optional(), unsubscribe: z.boolean().optional(),
-  structured: z.record(z.string(), z.union([z.string(), z.number()])).optional().describe("A CRM or QuickBooks row. Use email/customer and amount keys."),
+  structured: z.record(z.string(), z.union([z.string(), z.number()])).optional().describe("A CRM or QuickBooks row with email or customer. Add kind:\"payment\" + amount ONLY for money actually received, kind:\"invoice\" + amount for bills. Deal values, quotes and estimates must NOT use amount or kind."),
 });
 
 export const registerIngest = (server: McpServer) => {
