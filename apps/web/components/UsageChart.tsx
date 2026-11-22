@@ -8,7 +8,7 @@ export function UsageChart({ data }: { data: DailyUsage[] }) {
   return (
     <figure>
       <svg viewBox={`0 0 ${W} ${H + 20}`} role="img" aria-labelledby="chart-t" className="w-full">
-        <title id="chart-t">Daily tool calls this month. Peak {max} calls.</title>
+        <title id="chart-t">Questions answered per day this month. Peak {max} questions.</title>
         {[0, 0.5, 1].map((t) => (
           <line key={t} x1={pad} x2={W - pad} y1={H - t * (H - pad)} y2={H - t * (H - pad)}
             stroke="var(--border)" strokeWidth="1" />
@@ -17,8 +17,8 @@ export function UsageChart({ data }: { data: DailyUsage[] }) {
           const h = (d.calls / max) * (H - pad);
           return (
             <rect key={d.date} x={pad + i * bw + 1} y={H - h} width={Math.max(bw - 2, 1)} height={h}
-              rx="2" fill="var(--accent)">
-              <title>{`${d.date}: ${d.calls} calls`}</title>
+              rx="2" fill="var(--blue)">
+              <title>{`${d.date}: ${d.calls} questions`}</title>
             </rect>
           );
         })}
@@ -28,7 +28,7 @@ export function UsageChart({ data }: { data: DailyUsage[] }) {
         </text>
         <text x={pad} y={12} fontSize="11" fill="var(--muted)">{max}</text>
       </svg>
-      <figcaption className="sr-only">Bar chart of calls per day</figcaption>
+      <figcaption className="sr-only">Bar chart of questions per day</figcaption>
     </figure>
   );
 }

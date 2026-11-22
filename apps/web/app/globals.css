@@ -1,30 +1,19 @@
 @import "tailwindcss";
 
+/* Workwear blue + safety orange. Light only: readable outdoors on a phone. */
 :root {
-  --bg: #fafaf9;
+  --bg: #f6f4ef;
   --surface: #ffffff;
-  --fg: #1c1917;
-  --muted: #57534e;
-  --border: #e7e5e4;
-  --accent: #0f766e;
-  --accent-fg: #ffffff;
-  --code: #1c1917;
-  --code-fg: #e7e5e4;
+  --fg: #14213d;
+  --muted: #4a5568;
+  --border: #d9d4c7;
+  --blue: #1d3a63;
+  --blue-dark: #12253f;
+  --orange: #f26a1b;
+  --orange-dark: #c4510e;
+  --code: #12253f;
+  --code-fg: #f6f4ef;
   color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0c0a09;
-    --surface: #1c1917;
-    --fg: #fafaf9;
-    --muted: #a8a29e;
-    --border: #292524;
-    --accent: #2dd4bf;
-    --accent-fg: #042f2e;
-    --code: #000000;
-    --code-fg: #e7e5e4;
-    color-scheme: dark;
-  }
 }
 
 @theme inline {
@@ -33,13 +22,22 @@
   --color-fg: var(--fg);
   --color-muted: var(--muted);
   --color-line: var(--border);
-  --color-accent: var(--accent);
-  --color-accent-fg: var(--accent-fg);
+  --color-blue: var(--blue);
+  --color-blue-dark: var(--blue-dark);
+  --color-orange: var(--orange);
+  --color-orange-dark: var(--orange-dark);
   --color-code: var(--code);
   --color-code-fg: var(--code-fg);
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-body { background: var(--bg); color: var(--fg); font-family: var(--font-sans); }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+html { font-size: 18px; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-sans); line-height: 1.55; }
+:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+
+/* Hazard stripe used as a thin divider. */
+.hazard {
+  height: 8px;
+  background: repeating-linear-gradient(-45deg, var(--orange) 0 14px, var(--blue-dark) 14px 28px);
+}

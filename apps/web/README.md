@@ -1,8 +1,8 @@
-# Permit MCP web
+# Blue Collar MCP web
 
-Next.js (App Router) + TypeScript + Tailwind v4. Pages: `/`, `/docs`, `/account`, `/billing`.
+Next.js (App Router) + TypeScript + Tailwind v4. Pages: `/`, `/how-it-works`, `/packages`, `/rule-packs`, `/pricing`, `/docs`, `/account`, `/billing`. Copy lives in `lib/content.ts`.
 
-The site never shows permit data or takes portal actions.
+The site never shows business data or takes actions on accounts.
 
 ## Run
 

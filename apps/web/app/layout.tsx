@@ -1,11 +1,13 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Nav, Footer } from "@/components/Nav";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Permit MCP: one MCP for every permit portal",
-  description: "Log in once. Ask Claude about all your permits and inspections.",
+  title: "Blue Collar MCP: a guided AI crew for residential trades",
+  description: "One company brain, your shop's rules, and every tool connected. Inside Claude chat. Free to start.",
 };
+
+export const viewport: Viewport = { themeColor: "#1d3a63" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -15,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to content
         </a>
         <Nav />
-        <main id="main" className="mx-auto max-w-5xl px-6 py-12">{children}</main>
+        <main id="main" className="mx-auto max-w-6xl px-5 py-12">{children}</main>
         <Footer />
       </body>
     </html>
