@@ -25,7 +25,8 @@
     "schemas": "node scripts/gen-schemas.ts",
     "dev:cli": "node src/cli.ts",
     "dev:mcp": "node src/mcp.ts",
-    "dev:hosted": "node src/server.ts"
+    "dev:hosted": "node src/server.ts",
+    "sim": "node scripts/sim.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",

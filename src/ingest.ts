@@ -21,7 +21,7 @@ const stateFile = () => join(dir(), "state.json");
 const load = (): State => (existsSync(stateFile()) ? JSON.parse(readFileSync(stateFile(), "utf8")) : { seen: {}, facts: [], resolved: {} });
 const save = (s: State) => { mkdirSync(dir(), { recursive: true }); writeFileSync(stateFile(), JSON.stringify(s)); };
 
-const MONEY = /(?:\$|USD\s?)\s?(\d{1,3}(?:,\d{3})*|\d+)(?:\.(\d{2}))?/g;
+const MONEY = /(?:\$|USD\s?)\s?(\d[\d,]*)(?:\.(\d{2}))?/g;
 // Money words always keep an item, even from a no-reply sender: this is how payments are tracked.
 const PAY_WORDS = /\b(invoice|receipt|payment|paid|deposit|zelle|venmo|ach|check\s*#?\d*|statement|balance due|remittance)\b/i;
 // Construction paperwork from automated senders (suppliers, portals) is kept too.

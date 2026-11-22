@@ -56,3 +56,11 @@ test("vendor invoices and supplier paperwork are kept even from automated sender
   assert.equal(keep({ from: "news@vendor.com", subject: "Our fall newsletter", unsubscribe: true }), false, "real newsletter dropped");
   assert.equal(keep({ from: "deals@x.com", subject: "Order now: 40% off everything" }), false, "promo dropped");
 });
+
+test("amounts of 1000 or more parse correctly with or without commas", () => {
+  const amt = (body: string) => ing.extract({ id: "a", source: "gmail", date: "2026-11-01", from: "p@x.com", subject: "Receipt", body }, "receipt").find((f) => f.field === "payment")!.amount;
+  assert.equal(amt("Paid $2500.00 by Zelle"), 2500);
+  assert.equal(amt("Paid $2,500.00"), 2500);
+  assert.equal(amt("Paid $12,345"), 12345);
+  assert.equal(amt("Deposit $750"), 750);
+});
