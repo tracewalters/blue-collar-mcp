@@ -20,7 +20,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "test": "node --test test/*.test.ts",
+    "test": "node --test test/*.test.ts test/audit-*.test.mjs",
     "canary": "node src/canary.ts",
     "schemas": "node scripts/gen-schemas.ts",
     "dev:cli": "node src/cli.ts",
