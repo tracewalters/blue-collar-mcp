@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { registerBrain } from "./brain-tools.ts";
+import { BRAIN_INSTRUCTIONS, registerBrain } from "./brain-tools.ts";
 import { registerIngest } from "./ingest-tools.ts";
 import { tenantDir } from "./brain.ts";
 import { home } from "./vault.ts";
@@ -59,7 +59,7 @@ const handle = async (req: import("node:http").IncomingMessage, res: import("nod
   const dir = m ? tenantFor(m[1]) : null;
   if (!dir) { res.writeHead(404).end("Not found"); return; }
   if (req.method !== "POST") { res.writeHead(405, { allow: "POST" }).end(); return; }
-  const server = new McpServer({ name: "blue-collar-mcp", version: "0.1.0" });
+  const server = new McpServer({ name: "blue-collar-mcp", version: "0.1.0" }, { instructions: BRAIN_INSTRUCTIONS });
   registerBrain(server);
 registerIngest(server);
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });

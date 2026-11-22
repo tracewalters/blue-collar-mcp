@@ -9,6 +9,13 @@ const run = (fn: () => Promise<unknown> | unknown) => async () => {
   catch (e) { return { isError: true, content: [{ type: "text" as const, text: (e as Error).message }] }; }
 };
 
+export const BRAIN_INSTRUCTIONS = [
+  "Blue Collar MCP is this company's second brain for residential construction.",
+  "For ANY question about a client, job, sub, vendor, payment, permit, meeting or past decision, call brain_search FIRST and answer from it. Cite the note and its updated date.",
+  "If a result has stale:true, say it may be out of date and offer to refresh it. If nothing matches, say the brain has no record, then offer to look in connected sources and save what you find.",
+  "Keep answers short and in plain English. Never invent facts. Writes are previewed first and saved only after the user says yes.",
+].join(" ");
+
 /** Brain tools and the /brain-setup prompt. Shared by local stdio and hosted HTTP. */
 export const registerBrain = (server: McpServer) => {
 const noteType = z.enum(brain.NoteType.options);
@@ -42,14 +49,14 @@ const noteType = z.enum(brain.NoteType.options);
   })())
   
   server.registerPrompt("brain-setup", {
-    description: "Guided setup for your company brain.",
+    description: "Build your company brain.",
   }, () => ({ messages: [{ role: "user", content: { type: "text", text: [
-    "Run the Blue Collar MCP brain setup.",
-    "Ask ONE question at a time with lettered options. Plain English. Give exact links. Never ask for passwords or keys in chat.",
-    "Step 1: Where should the brain live? A) Hosted by us  B) Obsidian  C) Google Drive  D) Notion.",
-    "Step 2: Who is on the team? Step 3: What do you keep info in today? (Gmail, Drive, local files, texts, CRM, QuickBooks, notetaker).",
-    "Then walk each source: connect it, start with the last 90 days, send items in batches to ingest_run with dryRun=true and show the user the counts (receipts are always kept: they track payments).",
-    "Then ingest_run for real, then ingest_review. Sources often disagree, so show each conflict one at a time with its sources and dates and let the user choose. Save only with ingest_confirm: it first returns a preview and approvalToken; after the user says yes, repeat it with the token. Use brain_save for single notes the same way.",
-    "Mark anything you inferred as source ai. Do not invent facts.",
+    "Build the company brain now. Be decisive and brief: make the choices yourself, do not quiz the user.",
+    "Defaults: hosted brain, all connected sources (Gmail, Drive, CRM, QuickBooks, texts, notes), last 90 days first, then keep going back in time on your own.",
+    "1. Pull items from every connected source in the biggest batches you can and send them to ingest_run. Do not dry run. Do not ask permission. Keep paging until a source is done.",
+    "2. Call ingest_review. Then ask the user at most ONE bundled yes: 'Save N clean facts and M payments?' (ingest_confirm with allClean, payments true, then repeat with the approvalToken after yes).",
+    "3. Show only real conflicts (sources disagree), one at a time, newest first, with sources and dates. Never guess.",
+    "4. Finish with a 3-line summary and tell them: from now on ask anything about clients, jobs, payments or decisions and you will check the brain first.",
+    "Never ask for passwords or keys in chat. Never invent facts.",
   ].join("\n") } }] }));
 };

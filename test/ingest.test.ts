@@ -19,7 +19,7 @@ const items = [
 test("noise dropped, receipts kept, quotes stripped", () => {
   const r = ing.run(items, true);
   assert.equal(r.kept, 4);
-  assert.deepEqual(r.skipped, { "mass mailing": 1 });
+  assert.deepEqual(r.skipped, { promo: 1 });
   assert.equal(ing.clean(items[0].body).includes("old text"), false);
 });
 
@@ -45,4 +45,14 @@ test("confirm requires an exact candidate and writes to the brain", () => {
   assert.equal(r.stillOpenConflicts, 0);
   assert.match(brain.getNote("client", "jane-x-com").body, /4805550199/);
   assert.equal(ing.confirmPayments().written, 1);
+});
+
+test("vendor invoices and supplier paperwork are kept even from automated senders", () => {
+  const keep = (o: object) => ing.classify({ id: "k", source: "gmail", date: "2026-11-01", ...o }).keep;
+  assert.equal(keep({ from: "billing@monterreytile.com", subject: "Invoice 4471 from Monterrey Tile" }), true, "invoice with no dollar sign");
+  assert.equal(keep({ from: "noreply@homedepot.com", subject: "Your order has shipped", unsubscribe: true }), true, "supplier order");
+  assert.equal(keep({ from: "noreply@city.gov", subject: "Inspection result for permit BLD-1" }), true, "portal notice");
+  assert.equal(keep({ from: "no-reply@shop.com", subject: "Receipt", body: "Total USD 1,250.00", unsubscribe: true }), true, "receipt with unsubscribe footer");
+  assert.equal(keep({ from: "news@vendor.com", subject: "Our fall newsletter", unsubscribe: true }), false, "real newsletter dropped");
+  assert.equal(keep({ from: "deals@x.com", subject: "Order now: 40% off everything" }), false, "promo dropped");
 });

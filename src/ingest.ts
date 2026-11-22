@@ -21,17 +21,21 @@ const stateFile = () => join(dir(), "state.json");
 const load = (): State => (existsSync(stateFile()) ? JSON.parse(readFileSync(stateFile(), "utf8")) : { seen: {}, facts: [], resolved: {} });
 const save = (s: State) => { mkdirSync(dir(), { recursive: true }); writeFileSync(stateFile(), JSON.stringify(s)); };
 
-const MONEY = /\$\s?(\d{1,3}(?:,\d{3})*|\d+)(?:\.(\d{2}))?/g;
-const PAY_WORDS = /\b(receipt|invoice|payment|paid|deposit|zelle|venmo|ach|check\s*#?\d*|statement|thank you for your payment)\b/i;
+const MONEY = /(?:\$|USD\s?)\s?(\d{1,3}(?:,\d{3})*|\d+)(?:\.(\d{2}))?/g;
+// Money words always keep an item, even from a no-reply sender: this is how payments are tracked.
+const PAY_WORDS = /\b(invoice|receipt|payment|paid|deposit|zelle|venmo|ach|check\s*#?\d*|statement|balance due|remittance)\b/i;
+// Construction paperwork from automated senders (suppliers, portals) is kept too.
+const BIZ_WORDS = /\b(order|purchase order|po\s*#?\d+|quote|estimate|proposal|contract|change order|permit|inspection|delivery|shipment|submittal|lien)\b/i;
 
-/** Receipts are kept on purpose: they are how payments get tracked. */
-export const classify = (it: Item): { keep: boolean; kind: "structured" | "receipt" | "human" | "noise"; reason: string } => {
+/** In doubt, keep. Only clear mass-marketing is dropped. */
+export const classify = (it: Item): { keep: boolean; kind: "structured" | "receipt" | "business" | "human" | "noise"; reason: string } => {
   if (it.structured) return { keep: true, kind: "structured", reason: "structured source" };
   const text = `${it.subject ?? ""} ${it.body ?? ""}`;
-  if (PAY_WORDS.test(text) && /\$\s?\d/.test(text)) return { keep: true, kind: "receipt", reason: "payment or receipt" };
-  if (it.unsubscribe) return { keep: false, kind: "noise", reason: "mass mailing" };
-  if (/no-?reply|newsletter|marketing|mailer-daemon|notifications?@/i.test(it.from ?? "")) return { keep: false, kind: "noise", reason: "automated sender" };
-  if (/\b(\d+% off|sale ends|webinar|unsubscribe|limited time)\b/i.test(text)) return { keep: false, kind: "noise", reason: "promo" };
+  if (PAY_WORDS.test(text)) return { keep: true, kind: "receipt", reason: "payment or invoice" };
+  if (/\b(\d+% off|sale ends|webinar|limited time|free shipping)\b/i.test(text)) return { keep: false, kind: "noise", reason: "promo" };
+  const automated = it.unsubscribe || /no-?reply|newsletter|marketing|mailer-daemon|notifications?@/i.test(it.from ?? "");
+  if (automated && BIZ_WORDS.test(text)) return { keep: true, kind: "business", reason: "supplier or portal paperwork" };
+  if (automated) return { keep: false, kind: "noise", reason: "mass mailing" };
   return { keep: true, kind: "human", reason: "human conversation" };
 };
 
@@ -78,7 +82,8 @@ export const run = (items: Item[], dryRun = false) => {
     if (!dryRun) { st.facts.push(...facts); st.seen[key] = 1; }
   }
   if (!dryRun) save(st);
-  return { dryRun, ...stats };
+  const r = dryRun ? null : review();
+  return { dryRun, ...stats, ...(r ? { toReview: { cleanFacts: r.clean.length, conflicts: r.conflicts.length, payments: r.payments.length } } : {}) };
 };
 
 type Group = { id: string; entity: string; field: Fact["field"]; candidates: { value: string; sources: string[]; count: number; lastSeen: string }[] };

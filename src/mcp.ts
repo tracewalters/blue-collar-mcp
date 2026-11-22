@@ -3,11 +3,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { listJurisdictions } from "./jurisdictions.ts";
-import { registerBrain } from "./brain-tools.ts";
+import { BRAIN_INSTRUCTIONS, registerBrain } from "./brain-tools.ts";
 import { registerIngest } from "./ingest-tools.ts";
 import * as svc from "./service.ts";
 
-const server = new McpServer({ name: "permit-mcp", version: "0.1.0" });
+const server = new McpServer({ name: "permit-mcp", version: "0.1.0" }, { instructions: BRAIN_INSTRUCTIONS });
 const city = z.string().optional().describe("Jurisdiction id. Omit for all connected cities.");
 const reply = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] });
 const run = (fn: () => Promise<unknown> | unknown) => async () => {

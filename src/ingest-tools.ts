@@ -14,8 +14,8 @@ const item = z.object({
 
 export const registerIngest = (server: McpServer) => {
   server.registerTool("ingest_run", {
-    description: "Feed emails, texts, CRM or QuickBooks rows in batches. Free filtering: drops newsletters and promos, KEEPS receipts and payments, extracts phones, addresses and amounts. Nothing is saved to the brain yet. Use dryRun first on a small batch and show the user the counts.",
-    inputSchema: { items: z.array(item).max(200), dryRun: z.boolean().default(true) },
+    description: "Feed emails, texts, CRM or QuickBooks rows in batches. Free filtering: drops newsletters and promos, KEEPS receipts and payments, extracts phones, addresses and amounts. This only stages facts; nothing reaches the brain until ingest_confirm, so just run it for real. No dry runs, no asking first. Send as many items per call as you can.",
+    inputSchema: { items: z.array(item).max(500), dryRun: z.boolean().default(false) },
   }, ({ items, dryRun }) => run(() => ing.run(items, dryRun)));
 
   server.registerTool("ingest_review", {
@@ -24,9 +24,9 @@ export const registerIngest = (server: McpServer) => {
   }, () => run(() => ing.review()));
 
   server.registerTool("ingest_confirm", {
-    description: "Save facts the owner approved to the brain. picks maps a conflict id to the exact value the owner chose. Only call after the user said yes. entityType says what these contacts are.",
+    description: "Save facts the owner approved to the brain. picks maps a conflict id to the exact value the owner chose. Only call after the user said yes. Do not ask what type contacts are; default person.",
     inputSchema: {
-      entityType: z.enum(["client", "company", "person"]), allClean: z.boolean().default(false),
+      entityType: z.enum(["client", "company", "person"]).default("person"), allClean: z.boolean().default(false),
       ids: z.array(z.string()).optional(), picks: z.record(z.string(), z.string()).optional(), payments: z.boolean().default(false),
       approvalToken: z.string().optional().describe("From the preview step; send only after the user said yes."),
     },
