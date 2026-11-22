@@ -16,7 +16,7 @@ import { home } from "./vault.ts";
  */
 const dataDir = () => process.env.BCMCP_DATA ?? join(home(), "hosted");
 const tenantsFile = () => join(dataDir(), "tenants.json");
-type Tenants = Record<string, { name: string; created: string }>; // key = sha256(secret)
+type Tenants = Record<string, { name: string; created: string; folder?: string }>; // key = sha256(secret)
 const readTenants = (): Tenants => (existsSync(tenantsFile()) ? JSON.parse(readFileSync(tenantsFile(), "utf8")) : {});
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
 
@@ -24,14 +24,34 @@ export const createTenant = (name: string) => {
   mkdirSync(dataDir(), { recursive: true });
   const secret = randomBytes(24).toString("base64url");
   const t = readTenants();
-  t[hash(secret)] = { name, created: new Date().toISOString() };
+  t[hash(secret)] = { name, created: new Date().toISOString(), folder: randomBytes(8).toString("hex") };
   writeFileSync(tenantsFile(), JSON.stringify(t, null, 2), { mode: 0o600 });
   return secret;
 };
 
+/** Rotate: new URL, old URL stops working at once. Same brain folder, so data is kept. */
+export const rotateTenant = (name: string) => {
+  const t = readTenants();
+  const old = Object.entries(t).find(([, v]) => v.name === name);
+  if (!old) throw new Error(`No company named "${name}".`);
+  const secret = randomBytes(24).toString("base64url");
+  const folder = old[1].folder ?? old[0].slice(0, 16);
+  delete t[old[0]];
+  t[hash(secret)] = { ...old[1], folder, created: new Date().toISOString() };
+  writeFileSync(tenantsFile(), JSON.stringify(t, null, 2), { mode: 0o600 });
+  return secret;
+};
+export const revokeTenant = (name: string) => {
+  const t = readTenants();
+  const k = Object.keys(t).filter((x) => t[x].name === name);
+  if (!k.length) throw new Error(`No company named "${name}".`);
+  for (const x of k) delete t[x];
+  writeFileSync(tenantsFile(), JSON.stringify(t, null, 2), { mode: 0o600 });
+};
+
 const tenantFor = (secret: string) => {
-  const id = hash(secret);
-  return readTenants()[id] ? join(dataDir(), "tenants", id.slice(0, 16), "brain") : null;
+  const id = hash(secret), t = readTenants()[id];
+  return t ? join(dataDir(), "tenants", t.folder ?? id.slice(0, 16), "brain") : null;
 };
 
 const handle = async (req: import("node:http").IncomingMessage, res: import("node:http").ServerResponse) => {
@@ -54,6 +74,12 @@ if (process.argv[1]?.endsWith("server.ts") || process.argv[1]?.endsWith("server.
     const name = rest.join(" ") || "Company";
     const base = process.env.BCMCP_PUBLIC_URL ?? "https://YOUR-DOMAIN";
     console.log(`Connector URL for ${name} (shown once, treat like a password):\n${base}/t/${createTenant(name)}/mcp`);
+  } else if (cmd === "rotate") {
+    const name = rest.join(" ");
+    console.log(`New URL for ${name}; the old one no longer works:\n${process.env.BCMCP_PUBLIC_URL ?? "https://YOUR-DOMAIN"}/t/${rotateTenant(name)}/mcp`);
+  } else if (cmd === "revoke") {
+    revokeTenant(rest.join(" "));
+    console.log("Revoked. That connector URL no longer works.");
   } else {
     const port = Number(process.env.PORT ?? 3300);
     createServer((req, res) => handle(req, res).catch((e) => { console.error(e); res.headersSent || res.writeHead(500).end(); }))

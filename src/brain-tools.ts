@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { gate } from "./approval.ts";
 import * as brain from "./brain.ts";
 
 const reply = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] });
@@ -24,12 +25,12 @@ const noteType = z.enum(brain.NoteType.options);
   
   server.registerTool("brain_save", {
     description: "Create or update a brain note. Asks the user to approve first. Use source 'ai' for anything you wrote or inferred. Never invent facts; leave unknowns out.",
-    inputSchema: { type: noteType, title: z.string(), body: z.string(), source: z.enum(["human", "ai", "import"]).default("ai"), confirmed: z.boolean().default(false).describe("Only true after the user said yes in chat to this exact note.") },
-  }, ({ type, title, body, source, confirmed }) => run(async () => {
+    inputSchema: { type: noteType, title: z.string(), body: z.string(), source: z.enum(["human", "ai", "import"]).default("ai"), approvalToken: z.string().optional().describe("From the preview step. Only send after the user said yes to this exact note.") },
+  }, ({ type, title, body, source, approvalToken }) => run(async () => {
     const caps = server.server.getClientCapabilities();
     if (!caps?.elicitation) {
-      // Hosted HTTP is stateless and cannot pop a prompt. Require an explicit yes from the user in chat.
-      if (!confirmed) throw new Error("NOT saved. Show the user the note, ask them to confirm, then call again with confirmed=true.");
+      const g = gate({ type, title, body, source }, { type, title, body, source }, approvalToken);
+      if (g) return g;
       return brain.saveNote({ type, title, body, source });
     }
     const ok = await server.server.elicitInput({
@@ -48,7 +49,7 @@ const noteType = z.enum(brain.NoteType.options);
     "Step 1: Where should the brain live? A) Hosted by us  B) Obsidian  C) Google Drive  D) Notion.",
     "Step 2: Who is on the team? Step 3: What do you keep info in today? (Gmail, Drive, local files, texts, CRM, QuickBooks, notetaker).",
     "Then walk each source: connect it, start with the last 90 days, send items in batches to ingest_run with dryRun=true and show the user the counts (receipts are always kept: they track payments).",
-    "Then ingest_run for real, then ingest_review. Sources often disagree, so show each conflict one at a time with its sources and dates and let the user choose. Save only with ingest_confirm after a yes (confirmed=true). Use brain_save for single notes the same way.",
+    "Then ingest_run for real, then ingest_review. Sources often disagree, so show each conflict one at a time with its sources and dates and let the user choose. Save only with ingest_confirm: it first returns a preview and approvalToken; after the user says yes, repeat it with the token. Use brain_save for single notes the same way.",
     "Mark anything you inferred as source ai. Do not invent facts.",
   ].join("\n") } }] }));
 };

@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { gate } from "./approval.ts";
 import * as ing from "./ingest.ts";
 
 const reply = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] });
@@ -27,10 +28,12 @@ export const registerIngest = (server: McpServer) => {
     inputSchema: {
       entityType: z.enum(["client", "company", "person"]), allClean: z.boolean().default(false),
       ids: z.array(z.string()).optional(), picks: z.record(z.string(), z.string()).optional(), payments: z.boolean().default(false),
-      confirmed: z.boolean().describe("true only after the user said yes in chat"),
+      approvalToken: z.string().optional().describe("From the preview step; send only after the user said yes."),
     },
-  }, ({ entityType, allClean, ids, picks, payments, confirmed }) => run(() => {
-    if (!confirmed) throw new Error("NOT saved. Show the user what will be saved and ask first.");
+  }, ({ entityType, allClean, ids, picks, payments, approvalToken }) => run(() => {
+    const payload = { entityType, allClean, ids, picks, payments };
+    const g = gate(payload, { ...payload, willSave: ing.review() }, approvalToken);
+    if (g) return g;
     return { ...ing.confirm({ entityType, allClean, ids, picks }), ...(payments ? { payments: ing.confirmPayments() } : {}) };
   }));
 };

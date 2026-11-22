@@ -42,8 +42,16 @@ export const getNote = (type: NoteType, slug: string): Note => {
 };
 
 export const saveNote = (n: { type: NoteType; title: string; body: string; source: z.infer<typeof Source> }) => {
-  const slug = slugify(n.title);
-  if (!slug) throw new Error("Title needed.");
+  const base = slugify(n.title);
+  if (!base) throw new Error("Title needed.");
+  // Same title updates in place. A different title that slugs the same gets its own file.
+  let slug = base;
+  for (let i = 2; ; i++) {
+    let existing: Note | undefined;
+    try { existing = getNote(n.type, slug); } catch { break; }
+    if (existing.title === n.title.replace(/\n/g, " ")) break;
+    slug = `${base}-${i}`;
+  }
   mkdirSync(join(brainDir(), n.type), { recursive: true });
   const updated = new Date().toISOString().slice(0, 10);
   const text = `---\ntype: ${n.type}\ntitle: ${n.title.replace(/\n/g, " ")}\nsource: ${n.source}\nupdated: ${updated}\n---\n${n.body.trim()}\n`;

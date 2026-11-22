@@ -56,6 +56,7 @@ export async function listInspections(jurisdictionId?: string) {
 const bind = (plan: unknown, token: string) => createHash("sha256").update(JSON.stringify(plan) + token).digest("hex");
 
 export async function proposeInspection(jurisdictionId: string, req: { permitId: string; type: string; date: string }) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(req.date) || new Date(`${req.date}T00:00:00Z`).toISOString().slice(0, 10) !== req.date) throw new Error(`Invalid date "${req.date}". Use a real date as YYYY-MM-DD.`);
   const { j, a, s } = ctx(jurisdictionId);
   const plan = await a.proposeInspection(j, s, req);
   const token = randomBytes(16).toString("hex");

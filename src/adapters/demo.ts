@@ -1,8 +1,14 @@
 import type { PortalAdapter } from "../adapter.ts";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type { Inspection, Permit } from "../schemas.ts";
+import { home } from "../vault.ts";
 
 // Fixture-backed adapter. Lets the whole flow work with no real portal.
 // Login: username "demo", password "demo".
+// Demo bookings persist to disk so a CLI commit is visible to the next command.
+const bookedFile = () => join(home(), "demo-booked.json");
+const booked = (): Inspection[] => (existsSync(bookedFile()) ? JSON.parse(readFileSync(bookedFile(), "utf8")) : []);
 const permits: Permit[] = [
   { id: "BLD-2026-0142", jurisdiction: "demo-city", type: "Residential Remodel", address: "12 Oak St", status: "inspection_phase", appliedAt: "2026-09-02", expiresAt: "2027-03-02", feesDue: 0 },
   { id: "ELE-2026-0388", jurisdiction: "demo-city", type: "Electrical", address: "12 Oak St", status: "corrections_required", appliedAt: "2026-10-11", feesDue: 145 },
@@ -25,7 +31,8 @@ export const demoAdapter: PortalAdapter = {
   async listPermits() { return permits; },
   async getPermit(_j, _s, id) { return permits.find((p) => p.id === id); },
   async listInspections(_j, _s, permitId) {
-    return permitId ? inspections.filter((i) => i.permitId === permitId) : inspections;
+    const all = [...inspections, ...booked()];
+    return permitId ? all.filter((i) => i.permitId === permitId) : all;
   },
   async proposeInspection(j, _s, r) {
     return {
@@ -37,7 +44,9 @@ export const demoAdapter: PortalAdapter = {
   },
   async commit(_j, _s, plan) {
     const p = plan.params as { permitId: string; type: string; date: string };
-    inspections.push({ id: `INS-${inspections.length + 1}`, permitId: p.permitId, type: p.type, status: "scheduled", scheduledFor: p.date });
+    const added = booked();
+    added.push({ id: `INS-${inspections.length + added.length + 1}`, permitId: p.permitId, type: p.type, status: "scheduled", scheduledFor: p.date });
+    writeFileSync(bookedFile(), JSON.stringify(added));
     return { ok: true, message: `Scheduled: ${plan.summary}` };
   },
 };
