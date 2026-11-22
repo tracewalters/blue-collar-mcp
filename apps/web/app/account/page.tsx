@@ -1,55 +1,63 @@
 import type { Metadata } from "next";
-import { getPortals, getUsage, type PortalStatus } from "@/lib/mock";
+import { getSeats, getSources, getUsage, type SourceStatus } from "@/lib/mock";
 import { Card, PageHeader } from "@/components/ui";
 import { UsageChart } from "@/components/UsageChart";
 
-export const metadata: Metadata = { title: "Account · Permit MCP" };
+export const metadata: Metadata = { title: "Account · Blue Collar MCP" };
 
-const status: Record<PortalStatus, { label: string; cls: string }> = {
-  healthy: { label: "Healthy", cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
-  needs_relogin: { label: "Needs re-login", cls: "bg-amber-500/15 text-amber-800 dark:text-amber-300" },
-  needs_2fa: { label: "Needs 2FA", cls: "bg-amber-500/15 text-amber-800 dark:text-amber-300" },
+const status: Record<SourceStatus, { label: string; cls: string }> = {
+  healthy: { label: "Connected", cls: "bg-white/10 text-ink" },
+  needs_relogin: { label: "Sign in again", cls: "bg-warn/15 text-warn" },
+  needs_2fa: { label: "Needs code", cls: "bg-warn/15 text-warn" },
 };
 
 export default async function Account() {
-  const [usage, portals] = await Promise.all([getUsage(), getPortals()]);
+  const [usage, sources, seats] = await Promise.all([getUsage(), getSources(), getSeats()]);
   const top = Math.max(...usage.byTool.map((t) => t.calls));
   return (
     <>
-      <PageHeader title="Account" sub={`Usage for ${usage.month}. Sample data.`} />
+      <PageHeader title="Your" accent="shop" sub={`Your shop for ${usage.month}. Sample data.`} />
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <h2 className="font-semibold">Calls this month</h2>
-          <p className="mt-1 text-3xl font-semibold tabular-nums">{usage.totalCalls.toLocaleString("en-US")}</p>
+          <h2 className="text-lg font-semibold">Questions answered this month</h2>
+          <p className="mt-1 display text-5xl tabular-nums">{usage.totalCalls.toLocaleString("en-US")}</p>
           <div className="mt-4"><UsageChart data={usage.daily} /></div>
         </Card>
         <Card>
-          <h2 className="font-semibold">Connected portals</h2>
-          <ul className="mt-4 space-y-3">
-            {portals.map((p) => (
-              <li key={p.id} className="flex items-center justify-between gap-2">
-                <span>
-                  {p.name}
-                  <span className="block text-xs text-muted">{p.platform}</span>
+          <h2 className="text-lg font-semibold">Connected sources</h2>
+          <ul className="mt-4 space-y-4">
+            {sources.map((s) => (
+              <li key={s.id} className="flex items-center justify-between gap-2">
+                <span className="font-semibold">
+                  {s.name}
+                  <span className="block text-sm font-normal text-ink-2">{s.kind}</span>
                 </span>
-                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${status[p.status].cls}`}>
-                  {status[p.status].label}
+                <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-bold ${status[s.status].cls}`}>
+                  {status[s.status].label}
                 </span>
               </li>
             ))}
           </ul>
         </Card>
-        <Card className="lg:col-span-3">
-          <h2 className="font-semibold">Calls by tool</h2>
+        <Card className="lg:col-span-2">
+          <h2 className="text-lg font-semibold">Use by package</h2>
           <ul className="mt-4 space-y-3">
             {usage.byTool.map((t) => (
-              <li key={t.tool} className="grid grid-cols-[10rem_1fr_4rem] items-center gap-3 text-sm sm:grid-cols-[12rem_1fr_4rem]">
-                <span className="truncate font-mono">{t.tool}</span>
-                <div className="h-2 rounded-full bg-line" aria-hidden>
-                  <div className="h-2 rounded-full bg-accent" style={{ width: `${(t.calls / top) * 100}%` }} />
+              <li key={t.tool} className="grid grid-cols-[6rem_1fr_3.5rem] items-center gap-3">
+                <span className="font-semibold">{t.tool}</span>
+                <div className="h-3 rounded-full bg-line" aria-hidden>
+                  <div className="h-3 rounded-full bg-lime" style={{ width: `${(t.calls / top) * 100}%` }} />
                 </div>
-                <span className="text-right tabular-nums text-muted">{t.calls}</span>
+                <span className="text-right tabular-nums text-ink-2">{t.calls}</span>
               </li>
+            ))}
+          </ul>
+        </Card>
+        <Card>
+          <h2 className="text-lg font-semibold">Team</h2>
+          <ul className="mt-4 space-y-3">
+            {seats.map((s) => (
+              <li key={s.name} className="flex justify-between"><span>{s.name}</span><span className="text-ink-2">{s.role}</span></li>
             ))}
           </ul>
         </Card>

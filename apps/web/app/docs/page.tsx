@@ -1,56 +1,66 @@
 import type { Metadata } from "next";
-import { Code, PageHeader, INSTALL } from "@/components/ui";
+import { Card, PageHeader } from "@/components/ui";
+import { GITHUB, packages } from "@/lib/content";
 
-export const metadata: Metadata = { title: "Docs · Permit MCP" };
+export const metadata: Metadata = { title: "Docs · Blue Collar MCP" };
 
-const tools = [
-  ["list_permits", "All permits across projects and cities, filterable by status"],
-  ["get_permit", "Full detail and history for one permit"],
-  ["get_permit_status", "Live status from the city portal"],
-  ["list_inspections", "Upcoming, passed, failed, and needed inspections"],
-  ["schedule_inspection", "Request an inspection (confirmation required)"],
-  ["list_required_documents", "What a city needs for a permit type"],
-  ["get_jurisdiction", "Portal, fees, turnaround, and rules for a city"],
-  ["get_deadlines", "Expirations, resubmittals, and inspection windows"],
-];
+const H2 = ({ id, children }: { id: string; children: string }) => (
+  <h2 id={id} className="mt-16 scroll-mt-24 text-2xl font-semibold tracking-tight">{children}</h2>
+);
 
 export default function Docs() {
   return (
     <article className="max-w-3xl">
-      <PageHeader title="Docs" sub="Early draft. Tools and commands may change." />
+      <PageHeader title="Get" accent="started" sub="Early draft. Commands and steps may change." />
 
-      <h2 className="mt-10 text-xl font-semibold">1. Install</h2>
-      <p className="mt-2 text-muted">Add the server to Claude Code:</p>
-      <div className="mt-3"><Code>{INSTALL}</Code></div>
-
-      <h2 className="mt-10 text-xl font-semibold">2. Guided login</h2>
-      <ol className="mt-2 list-decimal space-y-1 pl-5 text-muted">
-        <li>Pick the cities where you have active permits.</li>
-        <li>Log into each city portal, one by one, in the terminal or a secure link.</li>
-        <li>Sessions are stored in an encrypted vault. You only log in again if a session expires or asks for 2FA.</li>
+      <H2 id="start">1. Add it to Claude</H2>
+      <p className="mt-3 text-ink-2">The owner does this once. Each team member then signs in with their own account.</p>
+      <ol className="mt-4 list-decimal space-y-2 pl-6 text-ink-2">
+        <li>Open Claude and go to <b className="text-ink">Settings → Connectors</b>.</li>
+        <li>Click <b className="text-ink">Add custom connector</b>.</li>
+        <li>Paste the Blue Collar MCP link and sign in.</li>
       </ol>
-      <p className="mt-3 text-muted">Never type a portal password into chat. Claude only sees a connection ID.</p>
+      <Card className="mt-6 border-lime/40">
+        <p className="text-ink-2"><b className="text-ink">Heads up:</b> the hosted link opens soon. Until then, you can run it yourself from the{" "}
+          <a href={GITHUB} className="text-lime underline underline-offset-4">GitHub code</a>.</p>
+      </Card>
 
-      <h2 className="mt-10 text-xl font-semibold">3. Tools</h2>
-      <div className="mt-3 overflow-x-auto rounded-xl border border-line">
-        <table className="w-full text-left text-sm">
-          <caption className="sr-only">MCP tools</caption>
-          <thead className="bg-surface text-muted">
-            <tr><th scope="col" className="p-3 font-medium">Tool</th><th scope="col" className="p-3 font-medium">Purpose</th></tr>
+      <H2 id="setup">2. Run a setup command</H2>
+      <p className="mt-3 text-ink-2">Type one of these in a Claude chat. Start with <code className="font-mono">/brain-setup</code>.</p>
+      <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-panel">
+        <table className="w-full text-left">
+          <caption className="sr-only">Setup commands</caption>
+          <thead className="text-ink-3">
+            <tr><th scope="col" className="p-3">Command</th><th scope="col" className="p-3">What it sets up</th></tr>
           </thead>
           <tbody>
-            {tools.map(([n, d]) => (
-              <tr key={n} className="border-t border-line">
-                <th scope="row" className="p-3 font-mono font-normal">{n}</th>
-                <td className="p-3 text-muted">{d}</td>
+            {packages.map((p) => (
+              <tr key={p.id} className="border-t border-line">
+                <th scope="row" className="whitespace-nowrap p-3 font-mono font-semibold">{p.command}</th>
+                <td className="p-3 text-ink-2">{p.what}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-muted">
-        Writes (submit, schedule, pay) are two-phase: the tool proposes a plan, then you confirm it.
-      </p>
+
+      <H2 id="ask">3. Ask in plain English</H2>
+      <ul className="mt-3 space-y-2 text-ink-2">
+        <li>“What did we decide with the Parkers last week?”</li>
+        <li>“Which permits have inspections coming up?”</li>
+        <li>“Draft a follow-up to every quote older than 10 days.”</li>
+      </ul>
+
+      <H2 id="safety">Safety</H2>
+      <ul className="mt-3 list-disc space-y-2 pl-6 text-ink-2">
+        <li>Anything that sends, orders, schedules, or pays shows you a plan first. Nothing happens until you say yes.</li>
+        <li>Never type a password into chat. Use the secure sign-in link Claude gives you.</li>
+        <li>Info has an “updated” date. Old info is flagged.</li>
+        <li>It only touches your own accounts and portals.</li>
+      </ul>
+
+      <H2 id="self-host">Run it yourself</H2>
+      <p className="mt-3 text-ink-2">Open source under MIT. See the <a href={GITHUB} className="text-lime underline underline-offset-4">README on GitHub</a> to build from source.</p>
     </article>
   );
 }

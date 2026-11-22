@@ -118,3 +118,9 @@ Meter per tool call, weighted: reads cheap, browser-backed reads and writes high
 4. Vault + `connect_portal` + hosted HTTP/OAuth.
 5. Two-phase writes (inspection scheduling first).
 6. Web app, Stripe, metering, VPS deploy.
+
+## Blue Collar MCP additions (draft)
+- Product packages (brain, rules, permits, books, crm, inventory) sit on this core. Permits is the existing engine; the others add tools and tenants.
+- Hosted mode is multi-tenant: every query is scoped by tenant. Postgres holds brain notes (markdown plus metadata); import and export for Obsidian and Drive.
+- Setup commands are MCP prompts that drive the guided flows in `docs/ONBOARDING.md`.
+- Rules are versioned. Answers cite the rule version and the data `updated` date.

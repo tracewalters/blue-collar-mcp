@@ -1,52 +1,46 @@
 # Project Vision
 
 ## One line
-One MCP for every permit portal. Log in once. Then Claude can read and act on all your permits.
+A guided AI crew for residential trades, inside Claude chat. One shared brain, one set of rules, every tool connected.
 
 ## Who it's for
-General contractors, subcontractors, and anyone in residential building who juggles permits and inspections across many city portals (Tyler Portico/EnerGov, Accela, OpenGov, Salesforce-based portals like Shape/Phoenix, and more).
+Architects, drafters, interior designers, landscape and pool designers, GCs, home builders, and subs like electricians and plumbers. Mostly owner-run shops and small teams, many new to AI.
 
 ## The problem
-Every city has its own portal, logins, forms, statuses, and fees. Contractors track it all by hand across tabs, emails, and spreadsheets.
+Business info is scattered across Gmail, Drive, Finder, texts, a CRM, QuickBooks, and city portals. The owner and team get different answers from outdated sources, and nobody has time to learn a new tool.
 
 ## The experience
-1. Install the MCP into Claude Code.
-2. Run the guided login. Pick the cities where you have active permits.
-3. Log into each city portal one by one. Only once.
-4. From then on, ask Claude. It reads and writes to those portals through the MCP.
+1. Add the Blue Collar MCP to Claude (the owner does it once; each person signs in).
+2. Run a setup command, for example `/brain-setup`.
+3. Claude asks multiple-choice questions, gives exact links and steps, connects your sources, and ingests what you already have.
+4. Pick a rule pack, or let Claude propose rules mined from your own history.
+5. Ask in plain English. Everyone on the team gets the same, short, correct answer.
 
-Example asks: "What's the status of every open permit?", "Which inspections failed this week?", "Schedule the framing inspection at 12 Oak St."
+## Packages
+brain, rules, permits, books, crm, inventory, then subs, field, docs, comms. Each ships with its own guided setup (see `docs/ONBOARDING.md`).
 
-## How it's built
-- **A CLI per portal platform.** Each platform adapter is a CLI first (`permit <platform> <command>`). The MCP is a thin layer over the same code. One implementation, two front doors.
-- **One login protocol.** City picker, then per-city login, then sessions stored in an encrypted vault. Re-login only when a session expires or asks for 2FA.
-- **Common data model.** Permit, Project, Inspection, Jurisdiction, Document, Fee, Status. Same shapes no matter the city.
-- **Safe writes.** Anything that submits, schedules, or pays is two-phase: propose, then confirm. Always user-approved.
-- **Credentials never go through the model.** Logins are entered in the terminal or a secure link, not chat.
-
-See `docs/ARCHITECTURE.md` for the technical design.
-
-## Open source and hosting
-- MIT licensed. Anyone can self-host or run it locally.
-- We also run a hosted instance on our own VPS.
-- Local mode and hosted mode share one codebase.
-
-## Website
-Marketing and docs, plus account, billing, and usage for the hosted MCP. The site never reads permit data or takes portal actions.
+## Permits (first package, already built)
+- A CLI per portal platform; the MCP is a thin layer over the same code.
+- Any Phoenix-metro city. When a portal has no adapter yet, an agent builds one from a playbook, the user reviews it, and it is shared with everyone.
+- Common data model, encrypted vault, two-phase writes (propose, then confirm), and credentials never go through the model.
+- Self-improving: fixtures plus canaries tell an agent when a portal changed (`docs/SELF_IMPROVING.md`).
 
 ## Principles
-- Speed over polish. Ship small, ship often.
-- API first, browser only when needed.
+- Beginner-friendly first. Plain English, one question at a time.
+- One source of truth, with `updated` dates so stale data is visible.
+- Writes always need a confirm. Secrets never go in chat.
+- Never touch a portal or account that isn't the user's own.
 - Few dependencies, few files, plain code.
-- Never touch a portal with anyone's account but their own.
-- Keep the repo clean.
 
-## Self-improving
-Every adapter has recorded fixtures and a scheduled canary. When a portal changes and a canary fails, an agent is told which adapter broke, reproduces it from fixtures, and proposes the fix as a PR. See `docs/SELF_IMPROVING.md`.
+## Business model
+Free to start (brain, rules, permits). Paid on usage: ingest credits, seats, new portal builds, automations (`docs/MONETIZATION.md`). Hosted on our own VPS; open source and self-hostable.
+
+## Not this
+RIG / Stanley 2.0 is the private power system for one company. This is the simple public product.
 
 ## Roadmap
-1. Core schemas, adapter SDK, CLI, stdio MCP with fixture-backed reads.
-2. Guided login + vault.
-3. First real adapter (Salesforce Experience / Shape-Phoenix), then Tyler.
-4. Safe writes (inspection scheduling first).
-5. Website, billing, hosted deploy.
+1. Brain and rules: guided setup, ingest, rule packs.
+2. Permits on the hosted multi-tenant server (Phoenix metro first).
+3. Books (read-only), then CRM adapters.
+4. Inventory and ordering.
+5. Subs, field, docs, comms.

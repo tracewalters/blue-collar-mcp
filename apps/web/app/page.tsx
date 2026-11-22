@@ -1,106 +1,97 @@
-import { Card, Code, INSTALL } from "@/components/ui";
+import Link from "next/link";
+import { Button, Card, IconTile, SectionTitle } from "@/components/ui";
+import { PackageRow } from "@/components/Previews";
+import { packages, rulePacks, trades } from "@/lib/content";
 
 const steps = [
-  ["Install", "Add the MCP to Claude Code with one command."],
-  ["Pick cities", "Choose the cities where you have active permits."],
-  ["Log in once", "Sign in to each city portal, one by one. Never again."],
-  ["Ask Claude", "“What’s the status of every open permit?”"],
-];
-
-const portals = [
-  ["Tyler", "Portico / EnerGov"],
-  ["Accela", "Civic Platform"],
-  ["OpenGov", "Permitting & Licensing"],
-  ["Salesforce", "Shape / Phoenix"],
+  ["Add it to Claude", "The owner adds it once. Each person signs in."],
+  ["Type a setup command", "Claude asks multiple-choice questions. Pick A, B, or C."],
+  ["Ask in plain English", "Everyone on the team gets the same answer."],
 ];
 
 export default function Home() {
   return (
     <>
-      <section className="py-10 text-center">
-        <h1 className="mx-auto max-w-3xl text-balance text-4xl font-semibold tracking-tight sm:text-6xl">
-          One MCP for every permit portal. <span className="text-accent">Log in once.</span>
-        </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-lg text-muted">
-          Contractors juggle permits and inspections across dozens of city portals. Permit MCP lets
-          Claude read and act on all of them.
+      <section className="relative -mx-5 overflow-hidden px-5 pb-16 pt-24 text-center sm:-mx-8 sm:pt-32">
+        <div className="blueprint absolute inset-0 -z-10" aria-hidden />
+        <div className="glow absolute inset-x-0 top-10 -z-10 h-96" aria-hidden />
+        <p className="mx-auto w-fit rounded-full border border-line bg-panel px-3 py-1 text-sm text-ink-2">
+          <span className="mr-2 rounded-md bg-lime px-1.5 py-0.5 text-xs font-semibold text-lime-ink">New</span>
+          Permits now works with any Phoenix-metro city
         </p>
-        <div className="mt-8 flex justify-center gap-3">
-          <a href="#install" className="rounded-lg bg-accent px-5 py-2.5 font-medium text-accent-fg">
-            Get started
-          </a>
-          <a href="https://github.com/tracewalters/Permit-MCP" className="rounded-lg border border-line px-5 py-2.5 font-medium hover:bg-surface">
-            View on GitHub
-          </a>
+        <h1 className="display mx-auto mt-8 max-w-5xl text-5xl sm:text-7xl lg:text-[88px]">
+          One answer for your <span className="text-lime">whole shop</span>, right in Claude
+        </h1>
+        <p className="mx-auto mt-6 max-w-xl text-lg text-ink-2">
+          A guided AI crew for residential trades. It learns your jobs, clients, and rules. No tech skills needed.
+        </p>
+        <div className="mt-9 flex flex-wrap justify-center gap-3">
+          <Button href="/docs#start" kind="white">Add Blue Collar to Claude</Button>
+          <Button href="/how-it-works" kind="dark">How does setup work?</Button>
         </div>
-      </section>
-
-      <section aria-labelledby="how" className="mt-20">
-        <h2 id="how" className="text-2xl font-semibold tracking-tight">How it works</h2>
-        <ol className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {steps.map(([t, d], i) => (
-            <li key={t}>
-              <Card className="h-full">
-                <span className="text-sm font-medium text-accent">Step {i + 1}</span>
-                <h3 className="mt-1 font-semibold">{t}</h3>
-                <p className="mt-2 text-sm text-muted">{d}</p>
-              </Card>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section aria-labelledby="portals" className="mt-20">
-        <h2 id="portals" className="text-2xl font-semibold tracking-tight">Supported portals</h2>
-        <p className="mt-2 text-muted">One adapter per platform. Each city is a small config on top.</p>
-        <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {portals.map(([n, d]) => (
-            <li key={n}>
-              <Card>
-                <h3 className="font-semibold">{n}</h3>
-                <p className="mt-1 text-sm text-muted">{d}</p>
-              </Card>
-            </li>
+        <ul className="no-scrollbar mx-auto mt-14 flex max-w-4xl gap-2 overflow-x-auto sm:flex-wrap sm:justify-center">
+          {trades.map((t, i) => (
+            <li key={t} className={`shrink-0 rounded-full px-4 py-2 text-[15px] ${i === 0 ? "bg-white/10 text-ink" : "text-ink-3"}`}>{t}</li>
           ))}
         </ul>
       </section>
 
-      <section aria-labelledby="safety" className="mt-20">
-        <h2 id="safety" className="text-2xl font-semibold tracking-tight">Safe by design</h2>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <Card>
-            <h3 className="font-semibold">Two-phase writes</h3>
-            <p className="mt-2 text-sm text-muted">
-              Submitting, scheduling, or paying is always propose, then confirm. Nothing happens
-              without your approval.
-            </p>
+      <section aria-labelledby="steps" className="grid gap-4 md:grid-cols-3">
+        <h2 id="steps" className="sr-only">Three steps</h2>
+        {steps.map(([t, d], i) => (
+          <Card key={t}>
+            <span className="display text-5xl text-lime">0{i + 1}</span>
+            <h3 className="mt-4 text-xl font-semibold">{t}</h3>
+            <p className="mt-1 text-ink-2">{d}</p>
           </Card>
-          <Card>
-            <h3 className="font-semibold">Credentials never reach the model</h3>
-            <p className="mt-2 text-sm text-muted">
-              You log in through the terminal or a secure link, never in chat. Claude only sees a
-              connection ID.
-            </p>
-          </Card>
+        ))}
+      </section>
+
+      <section aria-labelledby="pk" className="mt-28 grid grid-cols-1 gap-10 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+          <h2 id="pk" className="text-2xl font-semibold tracking-tight">Setup commands <span className="text-ink-3">{packages.length}</span></h2>
+          <p className="mt-2 text-ink-2">Type one in Claude. It walks you through the rest.</p>
+          <ul className="no-scrollbar mt-6 flex gap-1 overflow-x-auto lg:flex-col">
+            {packages.map((p, i) => (
+              <li key={p.id} className="shrink-0">
+                <a href={`#${p.id}`} className={`flex items-center gap-3 rounded-xl px-2 py-2 ${i === 0 ? "bg-panel-2 text-lime" : "hover:bg-panel-2"}`}>
+                  <IconTile letter={p.name[0]} active={i === 0} />{p.name}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </aside>
+        <div className="min-w-0 space-y-16">
+          {packages.map((p) => <PackageRow key={p.id} p={p} />)}
         </div>
       </section>
 
-      <section aria-labelledby="install" className="mt-20 scroll-mt-8">
-        <h2 id="install" className="text-2xl font-semibold tracking-tight">Install for Claude Code</h2>
-        <div className="mt-6 max-w-2xl"><Code label="Install command">{INSTALL}</Code></div>
-        <p className="mt-3 text-sm text-muted">Not on npm yet. Until then, build from source (see the GitHub README).</p>
+      <section aria-labelledby="rp" className="mt-28">
+        <SectionTitle title="Rule packs" count={rulePacks.length} sub="Rules built for your trade. Keep, edit, or drop each one. The whole team uses the same version." />
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {rulePacks.map((r) => (
+            <li key={r.id}>
+              <Card className="h-full p-5">
+                <h3 className="font-semibold">{r.name}</h3>
+                <p className="mt-1 text-sm text-ink-3">{r.forWho}</p>
+                <p className="mt-4 text-sm text-ink-2">“{r.samples[0]}”</p>
+              </Card>
+            </li>
+          ))}
+        </ul>
+        <Link href="/rule-packs" className="mt-6 inline-block text-ink-2 hover:text-ink">All rule packs →</Link>
       </section>
 
-      <section aria-labelledby="oss" className="mt-20">
-        <Card className="text-center">
-          <h2 id="oss" className="text-2xl font-semibold tracking-tight">Open source</h2>
-          <p className="mx-auto mt-2 max-w-xl text-muted">
-            MIT licensed. Run it locally or self-host. We also run a hosted version.
-          </p>
-          <a href="https://github.com/tracewalters/Permit-MCP" className="mt-5 inline-block rounded-lg border border-line px-5 py-2.5 font-medium hover:bg-bg">
-            github.com/tracewalters/Permit-MCP
-          </a>
-        </Card>
+      <section className="relative mt-28 overflow-hidden rounded-3xl border border-line bg-panel px-6 py-16 text-center">
+        <div className="glow absolute inset-0 -z-0" aria-hidden />
+        <div className="relative">
+          <h2 className="display text-4xl sm:text-6xl">Free to <span className="text-lime">start</span></h2>
+          <p className="mx-auto mt-4 max-w-md text-ink-2">Brain, rules, and permits are free. Pay only when you need more.</p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Button href="/docs#start">Start free</Button>
+            <Button href="/pricing" kind="dark">See pricing</Button>
+          </div>
+        </div>
       </section>
     </>
   );

@@ -1,18 +1,23 @@
 // Typed mock data. Replace these functions with real API calls later.
-// The site never shows permit data: only usage, portal names, and status.
+// The site never shows business data: only usage, source names, and status.
 
-export type PortalStatus = "healthy" | "needs_relogin" | "needs_2fa";
+export type SourceStatus = "healthy" | "needs_relogin" | "needs_2fa";
 
-export interface Portal {
+export interface Source {
   id: string;
   name: string;
-  platform: "Tyler" | "Accela" | "OpenGov" | "Salesforce";
-  status: PortalStatus;
+  kind: string;
+  status: SourceStatus;
 }
 
 export interface ToolUsage {
-  tool: string;
+  tool: string; // package name
   calls: number;
+}
+
+export interface Seat {
+  name: string;
+  role: "Owner" | "Member";
 }
 
 export interface DailyUsage {
@@ -28,10 +33,10 @@ export interface Usage {
 }
 
 export interface Plan {
-  id: "free" | "pro" | "team";
   name: string;
-  priceUsd: number;
+  seats: number;
   includedCalls: number;
+  credits: { name: string; used: number; included: number }[];
   renewsOn: string;
 }
 
@@ -49,12 +54,11 @@ const daily: DailyUsage[] = [
 ].map((calls, i) => ({ date: `2026-11-${String(i + 1).padStart(2, "0")}`, calls }));
 
 const byTool: ToolUsage[] = [
-  { tool: "list_permits", calls: 812 },
-  { tool: "get_permit_status", calls: 604 },
-  { tool: "list_inspections", calls: 431 },
-  { tool: "get_deadlines", calls: 188 },
-  { tool: "get_permit", calls: 143 },
-  { tool: "connection_status", calls: 61 },
+  { tool: "Brain", calls: 912 },
+  { tool: "Permits", calls: 604 },
+  { tool: "Rules", calls: 431 },
+  { tool: "Books", calls: 188 },
+  { tool: "CRM", calls: 104 },
 ];
 
 export async function getUsage(): Promise<Usage> {
@@ -66,24 +70,43 @@ export async function getUsage(): Promise<Usage> {
   };
 }
 
-export async function getPortals(): Promise<Portal[]> {
+export async function getSources(): Promise<Source[]> {
   return [
-    { id: "p1", name: "City of Phoenix", platform: "Salesforce", status: "healthy" },
-    { id: "p2", name: "City of Austin", platform: "Tyler", status: "healthy" },
-    { id: "p3", name: "San Diego County", platform: "Accela", status: "needs_relogin" },
-    { id: "p4", name: "City of Denver", platform: "OpenGov", status: "needs_2fa" },
+    { id: "s1", name: "Gmail", kind: "Email", status: "healthy" },
+    { id: "s2", name: "Google Drive", kind: "Files", status: "healthy" },
+    { id: "s3", name: "JobTread", kind: "CRM", status: "healthy" },
+    { id: "s4", name: "QuickBooks Online", kind: "Books, read-only", status: "needs_relogin" },
+    { id: "s5", name: "City of Phoenix", kind: "Permit portal", status: "healthy" },
+    { id: "s6", name: "Town of Queen Creek", kind: "Permit portal", status: "needs_2fa" },
+  ];
+}
+
+export async function getSeats(): Promise<Seat[]> {
+  return [
+    { name: "You", role: "Owner" },
+    { name: "Office manager", role: "Member" },
+    { name: "Project manager", role: "Member" },
   ];
 }
 
 export async function getPlan(): Promise<Plan> {
-  return { id: "pro", name: "Pro", priceUsd: 29, includedCalls: 5000, renewsOn: "2026-12-01" };
+  return {
+    name: "Free + pay as you go",
+    seats: 3,
+    includedCalls: 2500,
+    credits: [
+      { name: "Import credits", used: 640, included: 1000 },
+      { name: "Automations", used: 3, included: 5 },
+    ],
+    renewsOn: "2026-12-01",
+  };
 }
 
 export async function getInvoices(): Promise<Invoice[]> {
   return [
-    { id: "INV-1004", date: "2026-11-01", amountUsd: 29, status: "paid", url: "#" },
-    { id: "INV-1003", date: "2026-10-01", amountUsd: 29, status: "paid", url: "#" },
-    { id: "INV-1002", date: "2026-09-01", amountUsd: 29, status: "paid", url: "#" },
+    { id: "INV-1004", date: "2026-11-01", amountUsd: 24, status: "paid", url: "#" },
+    { id: "INV-1003", date: "2026-10-01", amountUsd: 18, status: "paid", url: "#" },
+    { id: "INV-1002", date: "2026-09-01", amountUsd: 18, status: "paid", url: "#" },
     { id: "INV-1001", date: "2026-08-01", amountUsd: 0, status: "paid", url: "#" },
   ];
 }
