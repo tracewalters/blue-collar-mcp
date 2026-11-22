@@ -4,6 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { listJurisdictions } from "./jurisdictions.ts";
 import { registerBrain } from "./brain-tools.ts";
+import { registerIngest } from "./ingest-tools.ts";
 import * as svc from "./service.ts";
 
 const server = new McpServer({ name: "permit-mcp", version: "0.1.0" });
@@ -57,5 +58,6 @@ server.registerTool("commit_action", {
 })())
 
 registerBrain(server);
+registerIngest(server);
 
 await server.connect(new StdioServerTransport());

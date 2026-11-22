@@ -47,7 +47,8 @@ const noteType = z.enum(brain.NoteType.options);
     "Ask ONE question at a time with lettered options. Plain English. Give exact links. Never ask for passwords or keys in chat.",
     "Step 1: Where should the brain live? A) Hosted by us  B) Obsidian  C) Google Drive  D) Notion.",
     "Step 2: Who is on the team? Step 3: What do you keep info in today? (Gmail, Drive, local files, texts, CRM, QuickBooks, notetaker).",
-    "Then walk each source: connect, pick scope, preview 10 samples, and only save with brain_save after the user says yes to that exact note (then pass confirmed=true).",
+    "Then walk each source: connect it, start with the last 90 days, send items in batches to ingest_run with dryRun=true and show the user the counts (receipts are always kept: they track payments).",
+    "Then ingest_run for real, then ingest_review. Sources often disagree, so show each conflict one at a time with its sources and dates and let the user choose. Save only with ingest_confirm after a yes (confirmed=true). Use brain_save for single notes the same way.",
     "Mark anything you inferred as source ai. Do not invent facts.",
   ].join("\n") } }] }));
 };

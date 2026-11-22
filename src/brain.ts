@@ -5,7 +5,7 @@ import { z } from "zod";
 import { home } from "./vault.ts";
 
 /** Company brain, v0: plain markdown files with frontmatter. Opens in Obsidian as-is. */
-export const NoteType = z.enum(["client", "job", "meeting", "decision", "person", "company", "knowledge", "rule"]);
+export const NoteType = z.enum(["client", "job", "meeting", "decision", "person", "company", "knowledge", "rule", "payment"]);
 export type NoteType = z.infer<typeof NoteType>;
 export const Source = z.enum(["human", "ai", "import"]);
 

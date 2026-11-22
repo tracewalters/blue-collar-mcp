@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { registerBrain } from "./brain-tools.ts";
+import { registerIngest } from "./ingest-tools.ts";
 import { tenantDir } from "./brain.ts";
 import { home } from "./vault.ts";
 
@@ -40,6 +41,7 @@ const handle = async (req: import("node:http").IncomingMessage, res: import("nod
   if (req.method !== "POST") { res.writeHead(405, { allow: "POST" }).end(); return; }
   const server = new McpServer({ name: "blue-collar-mcp", version: "0.1.0" });
   registerBrain(server);
+registerIngest(server);
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   res.on("close", () => { transport.close(); server.close(); });
   await server.connect(transport);
