@@ -11,22 +11,22 @@ export function UsageChart({ data }: { data: DailyUsage[] }) {
         <title id="chart-t">Questions answered per day this month. Peak {max} questions.</title>
         {[0, 0.5, 1].map((t) => (
           <line key={t} x1={pad} x2={W - pad} y1={H - t * (H - pad)} y2={H - t * (H - pad)}
-            stroke="var(--border)" strokeWidth="1" />
+            stroke="var(--line)" strokeWidth="1" />
         ))}
         {data.map((d, i) => {
           const h = (d.calls / max) * (H - pad);
           return (
             <rect key={d.date} x={pad + i * bw + 1} y={H - h} width={Math.max(bw - 2, 1)} height={h}
-              rx="2" fill="var(--blue)">
+              rx="2" fill="var(--lime)">
               <title>{`${d.date}: ${d.calls} questions`}</title>
             </rect>
           );
         })}
-        <text x={pad} y={H + 16} fontSize="11" fill="var(--muted)">{data[0].date.slice(5)}</text>
-        <text x={W - pad} y={H + 16} fontSize="11" textAnchor="end" fill="var(--muted)">
+        <text x={pad} y={H + 16} fontSize="11" fill="var(--ink-3)">{data[0].date.slice(5)}</text>
+        <text x={W - pad} y={H + 16} fontSize="11" textAnchor="end" fill="var(--ink-3)">
           {data[data.length - 1].date.slice(5)}
         </text>
-        <text x={pad} y={12} fontSize="11" fill="var(--muted)">{max}</text>
+        <text x={pad} y={12} fontSize="11" fill="var(--ink-3)">{max}</text>
       </svg>
       <figcaption className="sr-only">Bar chart of questions per day</figcaption>
     </figure>

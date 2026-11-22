@@ -5,71 +5,66 @@ const links = [
   { href: "/how-it-works", label: "How it works" },
   { href: "/packages", label: "Packages" },
   { href: "/rule-packs", label: "Rule packs" },
-  { href: "/pricing", label: "Pricing" },
   { href: "/docs", label: "Docs" },
-  { href: "/account", label: "Account" },
+  { href: "/pricing", label: "Pricing" },
 ];
 
-function Logo() {
+export function Logo() {
   return (
-    <Link href="/" className="text-xl font-extrabold tracking-tight text-white">
-      Blue Collar <span className="rounded bg-orange px-1.5 py-0.5">MCP</span>
+    <Link href="/" className="flex items-center gap-2 font-semibold">
+      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-lime text-sm font-black text-lime-ink">BC</span>
+      Blue Collar
     </Link>
   );
 }
 
 export function Nav() {
   return (
-    <header className="bg-blue">
-      <nav aria-label="Main" className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-        <Logo />
-        <ul className="hidden items-center gap-6 font-semibold text-white/85 lg:flex">
-          {links.map((l) => (
-            <li key={l.href}><Link href={l.href} className="hover:text-white">{l.label}</Link></li>
-          ))}
-          <li>
-            <Link href="/docs#start" className="rounded-lg bg-orange px-4 py-2 text-white hover:bg-orange-dark">
-              Start free
-            </Link>
-          </li>
-        </ul>
-        {/* Mobile menu: no JS needed. */}
-        <details className="relative lg:hidden">
-          <summary className="cursor-pointer list-none rounded-lg border-2 border-white/40 px-4 py-2 font-bold text-white">
-            Menu
-          </summary>
-          <ul className="absolute right-0 z-10 mt-2 w-60 rounded-xl border-2 border-line bg-surface p-2 text-lg font-semibold shadow-xl">
+    <header className="sticky top-0 z-20 border-b border-line bg-black/80 backdrop-blur">
+      <nav aria-label="Main" className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3 sm:px-8">
+        <div className="flex items-center gap-8">
+          <Logo />
+          <ul className="hidden items-center gap-6 text-[15px] text-ink-2 lg:flex">
             {links.map((l) => (
-              <li key={l.href}><Link href={l.href} className="block rounded-lg px-4 py-3 hover:bg-bg">{l.label}</Link></li>
+              <li key={l.href}><Link href={l.href} className="hover:text-ink">{l.label}</Link></li>
             ))}
-            <li><Link href="/billing" className="block rounded-lg px-4 py-3 hover:bg-bg">Billing</Link></li>
-            <li>
-              <Link href="/docs#start" className="mt-1 block rounded-lg bg-orange px-4 py-3 text-center text-white">Start free</Link>
-            </li>
           </ul>
-        </details>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link href="/account" className="hidden rounded-xl border border-line px-3.5 py-2 text-sm text-ink-2 hover:text-ink sm:block">
+            Account
+          </Link>
+          <Link href="/docs#start" className="rounded-xl bg-lime px-3.5 py-2 text-sm font-semibold text-lime-ink">
+            Start free
+          </Link>
+          <details className="relative lg:hidden">
+            <summary className="cursor-pointer list-none rounded-xl bg-panel-2 px-3.5 py-2 text-sm font-semibold">Menu</summary>
+            <ul className="absolute right-0 mt-2 w-56 rounded-2xl border border-line bg-panel p-2 shadow-2xl">
+              {[...links, { href: "/account", label: "Account" }, { href: "/billing", label: "Billing" }].map((l) => (
+                <li key={l.href}><Link href={l.href} className="block rounded-xl px-4 py-3 hover:bg-panel-2">{l.label}</Link></li>
+              ))}
+            </ul>
+          </details>
+        </div>
       </nav>
-      <div className="hazard" aria-hidden />
     </header>
   );
 }
 
 export function Footer() {
   return (
-    <footer className="mt-24 bg-blue-dark text-white/80">
-      <div className="hazard" aria-hidden />
-      <div className="mx-auto grid max-w-6xl gap-6 px-5 py-10 sm:grid-cols-2">
+    <footer className="mt-24 border-t border-line">
+      <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 text-sm text-ink-2 sm:grid-cols-[1fr_auto] sm:px-8">
         <div>
           <Logo />
-          <p className="mt-3">A guided AI crew for residential trades, inside Claude chat.</p>
+          <p className="mt-3 max-w-sm">A guided AI crew for residential trades, inside Claude chat. Open source (MIT).</p>
         </div>
-        <ul className="grid grid-cols-2 gap-2 font-semibold">
-          {[...links, { href: "/billing", label: "Billing" }].map((l) => (
-            <li key={l.href}><Link href={l.href} className="hover:text-white">{l.label}</Link></li>
+        <ul className="grid grid-cols-2 gap-x-10 gap-y-2">
+          {[...links, { href: "/account", label: "Account" }, { href: "/billing", label: "Billing" }].map((l) => (
+            <li key={l.href}><Link href={l.href} className="hover:text-ink">{l.label}</Link></li>
           ))}
-          <li><a href={GITHUB} className="hover:text-white">GitHub</a></li>
+          <li><a href={GITHUB} className="hover:text-ink">GitHub</a></li>
         </ul>
-        <p className="text-sm sm:col-span-2">Open source (MIT). Your data stays yours. Nothing gets sent or changed without your OK.</p>
       </div>
     </footer>
   );

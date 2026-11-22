@@ -1,43 +1,49 @@
 @import "tailwindcss";
 
-/* Workwear blue + safety orange. Light only: readable outdoors on a phone. */
+/* Tokens from /TASTE.md. Change them there first. */
 :root {
-  --bg: #f6f4ef;
-  --surface: #ffffff;
-  --fg: #14213d;
-  --muted: #4a5568;
-  --border: #d9d4c7;
-  --blue: #1d3a63;
-  --blue-dark: #12253f;
-  --orange: #f26a1b;
-  --orange-dark: #c4510e;
-  --code: #12253f;
-  --code-fg: #f6f4ef;
-  color-scheme: light;
+  --bg: #000000;
+  --panel: #0f1012;
+  --panel-2: #17191c;
+  --line: rgba(255, 255, 255, 0.08);
+  --ink: #f7f7f8;
+  --ink-2: rgba(255, 255, 255, 0.6);
+  --ink-3: rgba(255, 255, 255, 0.35);
+  --lime: #d4ff1f;
+  --lime-ink: #141414;
+  color-scheme: dark;
 }
 
 @theme inline {
   --color-bg: var(--bg);
-  --color-surface: var(--surface);
-  --color-fg: var(--fg);
-  --color-muted: var(--muted);
-  --color-line: var(--border);
-  --color-blue: var(--blue);
-  --color-blue-dark: var(--blue-dark);
-  --color-orange: var(--orange);
-  --color-orange-dark: var(--orange-dark);
-  --color-code: var(--code);
-  --color-code-fg: var(--code-fg);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-lime: var(--lime);
+  --color-lime-ink: var(--lime-ink);
+  --color-ok: #4ade80;
+  --color-warn: #fbbf24;
+  --color-bad: #f87171;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-html { font-size: 18px; }
-body { background: var(--bg); color: var(--fg); font-family: var(--font-sans); line-height: 1.55; }
-:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-sans); }
+:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
 
-/* Hazard stripe used as a thin divider. */
-.hazard {
-  height: 8px;
-  background: repeating-linear-gradient(-45deg, var(--orange) 0 14px, var(--blue-dark) 14px 28px);
+.display { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: -0.04em; line-height: 0.95; }
+
+/* Blueprint grid texture, fading at the edges. */
+.blueprint {
+  background-image:
+    linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
 }
+.glow { background: radial-gradient(ellipse at center, rgba(212,255,31,.14), transparent 60%); }
+.no-scrollbar { scrollbar-width: none; }

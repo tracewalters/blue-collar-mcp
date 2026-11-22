@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
-import { Button, Card, ChatDemo, Label, PageHeader } from "@/components/ui";
+import { Button, Card, ChatDemo, PageHeader } from "@/components/ui";
 import { brainSetup } from "@/lib/content";
 
 export const metadata: Metadata = { title: "How it works · Blue Collar MCP" };
 
 const pattern = [
   ["You type a command", "Like /brain-setup or /permits-setup."],
-  ["Claude asks one question", "Pick A, B, C, or D. No typing essays."],
-  ["You get exact steps", "The right link and what to click. One step at a time."],
+  ["Claude asks one question", "Pick A, B, C, or D. No essays."],
+  ["You get exact steps", "The right link and what to click."],
   ["Claude checks it worked", "It tests the connection before moving on."],
-  ["You get a first win", "A real answer about your own business, right away."],
+  ["You get a first win", "A real answer about your own business."],
 ];
 
-const rules = [
+const promises = [
   "One question at a time, in plain English.",
   "Always the exact link, never “go find the settings.”",
   "Passwords never go in chat. You use a secure sign-in link.",
@@ -23,52 +23,46 @@ const rules = [
 export default function HowItWorks() {
   return (
     <>
-      <PageHeader title="How it works" sub="Every setup works the same way. Claude asks, you pick, it walks you through." />
+      <PageHeader title="Setup is a" accent="multiple-choice quiz" sub="Every package sets up the same way. Claude asks, you pick, it walks you through." />
 
-      <div className="grid gap-10 lg:grid-cols-[1fr_1.1fr]">
+      <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr]">
         <div>
-          <Label>Every setup follows 5 steps</Label>
-          <ol className="mt-4 space-y-4">
+          <h2 className="text-2xl font-semibold tracking-tight">Every setup <span className="text-ink-3">5 steps</span></h2>
+          <ol className="mt-8 space-y-6">
             {pattern.map(([t, d], i) => (
-              <li key={t} className="flex gap-4">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange text-xl font-extrabold text-white">{i + 1}</span>
+              <li key={t} className="flex gap-5">
+                <span className="display w-12 shrink-0 text-4xl text-lime">0{i + 1}</span>
                 <div>
-                  <h2 className="text-xl font-bold">{t}</h2>
-                  <p className="text-muted">{d}</p>
+                  <h3 className="text-lg font-semibold">{t}</h3>
+                  <p className="text-ink-2">{d}</p>
                 </div>
               </li>
             ))}
           </ol>
         </div>
-        <div>
-          <Label>Example: /brain-setup</Label>
-          <div className="mt-4"><ChatDemo command="/brain-setup" turns={brainSetup} /></div>
-        </div>
+        <ChatDemo command="/brain-setup" turns={brainSetup} />
       </div>
 
-      <section aria-labelledby="after" className="mt-16 grid gap-4 md:grid-cols-3">
-        <h2 id="after" className="sr-only">After setup</h2>
-        {[
-          ["Review the odd ones", "Claude shows you unclear matches and duplicates one at a time. You decide."],
-          ["Pick your rules", "Next it offers /rules-setup so answers match how your shop works."],
-          ["Ask anything", "“What did we promise the Lees?” “Which permits expire this month?”"],
-        ].map(([t, d]) => (
-          <Card key={t}><h3 className="text-xl font-bold">{t}</h3><p className="mt-2 text-muted">{d}</p></Card>
-        ))}
-      </section>
-
-      <section aria-labelledby="promise" className="mt-16 rounded-2xl bg-blue p-8 text-white sm:p-12">
-        <h2 id="promise" className="text-3xl font-extrabold">Our setup promises</h2>
-        <ul className="mt-6 space-y-3 text-lg">
-          {rules.map((r) => (
-            <li key={r} className="flex gap-3"><span className="font-extrabold text-orange" aria-hidden>✓</span>{r}</li>
+      <section aria-labelledby="promise" className="mt-24 grid gap-10 lg:grid-cols-[280px_1fr]">
+        <h2 id="promise" className="text-2xl font-semibold tracking-tight">Our promises <span className="text-ink-3">{promises.length}</span></h2>
+        <ul className="divide-y divide-line border-y border-line">
+          {promises.map((r) => (
+            <li key={r} className="flex gap-4 py-4 text-lg"><span className="text-lime" aria-hidden>✓</span><span className="text-ink-2">{r}</span></li>
           ))}
         </ul>
       </section>
 
+      <section className="mt-24 grid gap-4 md:grid-cols-3">
+        {[
+          ["Review the odd ones", "Unclear matches and duplicates, one at a time. You decide."],
+          ["Pick your rules", "Next it offers /rules-setup so answers match your shop."],
+          ["Ask anything", "“Which permits expire this month?”"],
+        ].map(([t, d]) => <Card key={t}><h3 className="font-semibold">{t}</h3><p className="mt-1 text-ink-2">{d}</p></Card>)}
+      </section>
+
       <div className="mt-12 flex flex-wrap gap-3">
         <Button href="/docs#start">Start free</Button>
-        <Button href="/packages" kind="outline">See all setup commands</Button>
+        <Button href="/packages" kind="dark">See all setup commands</Button>
       </div>
     </>
   );
