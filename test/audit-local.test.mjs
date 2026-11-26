@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
+const NEXT = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() + 3); while (d.getUTCDay() % 6 === 0) d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })(); // a weekday after today
 const fresh = () => ({ ...process.env, PERMIT_MCP_HOME: mkdtempSync(join(tmpdir(), 'bcmcp-audit-')), BRAIN_DIR: '', BCMCP_BRAIN: '1' });
 const cli = (env, args, input) => spawnSync(process.execPath, ['src/cli.ts', ...args], { env, input, encoding: 'utf8', timeout: 5000 });
 const ok = (result) => {
@@ -26,7 +27,7 @@ test('built CLI smoke: help, login, connections, city filters, detail, proposal,
   assert.equal(JSON.parse(ok(cli(env, ['permits', '--city', 'demo-city', '--json']))).length, 3);
   const permit = JSON.parse(ok(cli(env, ['permit', 'demo-city', 'BLD-2026-0142', '--json'])));
   assert.equal(permit.inspections.length, 2);
-  const proposal = JSON.parse(ok(cli(env, ['schedule', 'demo-city', permit.permit.id, '--type', 'Framing', '--date', '2026-12-01', '--json'])));
+  const proposal = JSON.parse(ok(cli(env, ['schedule', 'demo-city', permit.permit.id, '--type', 'Framing', '--date', NEXT, '--json'])));
   assert.match(ok(cli(env, ['commit', proposal.token])), /Scheduled/);
   ok(cli(env, ['logout', 'demo-city']));
   assert.deepEqual(JSON.parse(ok(cli(env, ['connections', '--json']))), []);
@@ -39,7 +40,7 @@ test('CLI retains a scheduled demo inspection across invocations', () => {
   const demo = cities.findIndex((city) => city.id === 'demo-city') + 1;
   ok(cli(env, ['login'], demo + '\ndemo\ndemo\n'));
   const before = JSON.parse(ok(cli(env, ['inspections', '--json'])));
-  const proposal = JSON.parse(ok(cli(env, ['schedule', 'demo-city', 'BLD-2026-0142', '--type', 'Framing', '--date', '2026-12-01', '--json'])));
+  const proposal = JSON.parse(ok(cli(env, ['schedule', 'demo-city', 'BLD-2026-0142', '--type', 'Framing', '--date', NEXT, '--json'])));
   assert.equal(JSON.parse(ok(cli(env, ['commit', proposal.token, '--json']))).ok, true);
   const after = JSON.parse(ok(cli(env, ['inspections', '--json'])));
   assert.equal(after.length, before.length + 1);
@@ -76,7 +77,7 @@ test('built stdio MCP lists tools and prompts and handles an approved brain writ
     assert.deepEqual(JSON.parse((await call('list_permits', {})).content[0].text), []);
     assert.deepEqual(JSON.parse((await call('list_inspections', {})).content[0].text), []);
     assert.equal((await call('get_permit', {city:'demo-city', permitId: 'x'})).isError, true);
-    assert.equal((await call('propose_inspection', {city:'demo-city', permitId:'x', type:'Frame', date:'2026-12-01'})).isError, true);
+    assert.equal((await call('propose_inspection', {city:'demo-city', permitId:'x', type:'Frame', date:NEXT})).isError, true);
     assert.equal((await call('commit_action', {token:'unknown'})).isError, true);
     const args = { type:'job', title:'Local fixture', body:'North fence', source:'human' };
     assert.equal((await call('brain_save', args)).isError, true);
@@ -88,7 +89,7 @@ test('built stdio MCP lists tools and prompts and handles an approved brain writ
     const demo = cities.findIndex(city => city.id === 'demo-city') + 1;
     ok(cli(env, ['login'], demo + '\ndemo\ndemo\n'));
     const before = JSON.parse((await call('list_inspections', {})).content[0].text).length;
-    const proposed = await call('propose_inspection', {city:'demo-city', permitId:'BLD-2026-0142', type:'Framing', date:'2026-12-01'});
+    const proposed = await call('propose_inspection', {city:'demo-city', permitId:'BLD-2026-0142', type:'Framing', date:NEXT});
     const {token} = JSON.parse(proposed.content[0].text);
     assert.equal(JSON.parse((await call('list_inspections', {})).content[0].text).length, before);
     assert.equal(JSON.parse((await call('commit_action', {token})).content[0].text).ok, true);
@@ -121,7 +122,7 @@ test('service rejects expired tokens and missing permits, and logout works in a 
   const detail = await svc.getPermit('demo-city','BLD-2026-0142');
   assert.equal(detail.inspections.length, 2);
   await assert.rejects(() => svc.getPermit('demo-city','missing'), /not found/);
-  const {token} = await svc.proposeInspection('demo-city', {permitId:detail.permit.id, type:'Framing', date:'2026-12-01'});
+  const {token} = await svc.proposeInspection('demo-city', {permitId:detail.permit.id, type:'Framing', date:NEXT});
   const db = readDb();
   db.plans[token].expires = Date.now() - 1;
   writeDb(db);

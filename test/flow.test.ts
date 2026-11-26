@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
+const NEXT = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() + 3); while (d.getUTCDay() % 6 === 0) d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })(); // a weekday after today
 process.env.PERMIT_MCP_HOME = mkdtempSync(join(tmpdir(), "permit-"));
 const svc = await import("../src/service.ts");
 const vault = await import("../src/vault.ts");
@@ -33,7 +34,7 @@ test("login once, read across cities, two-phase write", async () => {
   assert.ok((await svc.listPermits()).length >= 3);
   const before = (await svc.listInspections()).length;
 
-  const { token, summary } = await svc.proposeInspection("demo-city", { permitId: "BLD-2026-0142", type: "Framing", date: "2026-12-01" });
+  const { token, summary } = await svc.proposeInspection("demo-city", { permitId: "BLD-2026-0142", type: "Framing", date: NEXT });
   assert.equal((await svc.listInspections()).length, before, "propose must not change anything");
   assert.match(svc.peek(token), /Framing/);
   assert.match(summary, /Framing/);

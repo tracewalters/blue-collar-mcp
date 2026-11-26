@@ -1,4 +1,4 @@
-import type { PortalAdapter } from "../adapter.ts";
+import { portalDate, type PortalAdapter } from "../adapter.ts";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Inspection, Permit } from "../schemas.ts";
@@ -18,6 +18,7 @@ const inspections: Inspection[] = [
   { id: "INS-1", permitId: "BLD-2026-0142", type: "Framing", status: "needed" },
   { id: "INS-2", permitId: "BLD-2026-0142", type: "Foundation", status: "passed", scheduledFor: "2026-10-05" },
   { id: "INS-3", permitId: "ELE-2026-0388", type: "Rough Electrical", status: "failed", scheduledFor: "2026-11-12", notes: "Missing box fill labels" },
+  { id: "INS-4", permitId: "ELE-2026-0388", type: "Rough Electrical", status: "scheduled", scheduledFor: "2026-12-03" },
 ];
 
 export const demoAdapter: PortalAdapter = {
@@ -34,12 +35,19 @@ export const demoAdapter: PortalAdapter = {
     const all = [...inspections, ...booked()];
     return permitId ? all.filter((i) => i.permitId === permitId) : all;
   },
+  // Dry run like Shape PHX: find the open inspection of that type and "fill" the same form fields.
   async proposeInspection(j, _s, r) {
+    const ins = inspections.find((i) => i.permitId === r.permitId && i.status === "needed" && i.type.toLowerCase() === r.type.toLowerCase());
+    if (!ins) throw new Error(`No ${r.type} inspection is open to request on ${r.permitId}.`);
     return {
       action: "schedule_inspection",
       connectionId: j.id,
-      summary: `Schedule ${r.type} inspection for ${r.permitId} on ${r.date} (${j.name})`,
-      params: r,
+      summary: `Schedule ${ins.type} inspection for ${r.permitId} on ${r.date} (${j.name})`,
+      params: { permitId: r.permitId, inspectionId: ins.id, type: ins.type, date: r.date },
+      preview: {
+        Permit: r.permitId, Inspection: `${ins.id} ${ins.type}`, "Preferred Date": portalDate(r.date),
+        "Site Contact Name": r.contact.name, "Site Contact Phone": r.contact.phone ?? "", "Site Contact Email": r.contact.email ?? "",
+      },
     };
   },
   async commit(_j, _s, plan) {
