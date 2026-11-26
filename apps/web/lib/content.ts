@@ -1,4 +1,4 @@
-// Site copy and product facts. Source: VISION.md, docs/ONBOARDING.md, docs/MONETIZATION.md.
+// Site copy and product facts. Source: VISION.md and docs/ROADMAP.md.
 
 export const GITHUB = "https://github.com/tracewalters/Permit-MCP";
 

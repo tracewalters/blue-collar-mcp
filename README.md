@@ -1,32 +1,32 @@
 # Blue Collar MCP
 
-Guided AI for residential trades, inside Claude chat. A shared company brain, trade rule packs, and step-by-step workflows for people who have never used AI.
+Permits for residential contractors, inside Claude. Ask "what's the status of my permits?" and get one answer across every city portal. Open the website dashboard to see it laid out.
 
-**For:** architects, drafters, interior designers, landscape and pool designers, GCs, home builders, and subs (electrical, plumbing, and more). Owner-run shops and small teams.
+## How it works
+1. In Claude, add the connector, then say **"open my permit dashboard"**.
+2. Claude gives you a private one-time link. On the site, connect your city portal (login goes straight to your private vault, never through Claude).
+3. Ask Claude about permits, inspections and deadlines. The dashboard shows the same data.
 
-## Promise
-- **One source of truth.** Owner and team get the same answer from the same live data. Stale data is flagged.
-- **Guided, not technical.** Type `/brain-setup`. Claude asks multiple-choice questions and gives exact links and steps.
-- **Trade-smart.** Rule packs keep answers short and right for residential construction.
+## What exists
+- Permit engine: common schemas, adapter SDK, CLI (`permit`), MCP server, canary tests. Only a demo city works today (login `demo` / `demo`). Shape PHX is next.
+- Hosted server: one private connector URL and vault per company, website sign-in by one-time link.
+- Website (`apps/web`): landing and docs, plus the permit dashboard.
+- Parked: company brain and ingest in `src/brain/` (off by default).
 
-## Packages
-Setup flows for each are mapped in [`docs/ONBOARDING.md`](docs/ONBOARDING.md).
+## Layout
+```
+src/          engine, CLI, MCP tools, hosted server (src/brain = parked)
+spec/schemas  JSON schemas (generated)
+apps/web      Next.js site and dashboard
+data/         jurisdictions
+docs/         architecture, hosting, roadmap, portal notes
+test/         tests;  scripts/sim.ts = no-model simulation
+```
 
-| Package | Command | Status |
-|---|---|---|
-| `brain` company memory: clients, jobs, meetings, decisions | `/brain-setup` | v1 |
-| `rules` rule packs or your own | `/rules-setup` | v1 |
-| `permits` any Phoenix-metro city portal, via portal CLIs | `/permits-setup` | v1, core built (`src/`) |
-| `books` QuickBooks and bookkeeping | `/books-setup` | v1.5, read-only first |
-| `crm` Jobber, JobTread, Buildertrend, HubSpot adapters | `/crm-setup` | v1.5 |
-| `inventory` stock lookup and ordering (Pool Corp, Home Depot) | `/inventory-setup` | v2 |
-| `subs`, `field`, `docs`, `comms` | later | stubs |
-
-## Where the code is today
-The permit engine (schemas, adapter SDK, CLI, MCP server, canary) lives in `src/`. It becomes `packages/permits` when the hosted server needs the split. `apps/web` is the marketing and account site. `packages/*` and `rule-packs/*` hold the product plan for now.
-
-## Related
-RIG / Stanley 2.0 is the private self-hosted system for Walters Renovations. This is the friendly public product. Walters rules can seed one rule pack. No Walters data lives here.
-
-## Hosting and license
-One multi-tenant server on a Hostinger VPS, free to start, usage-based paid tiers ([`docs/MONETIZATION.md`](docs/MONETIZATION.md)). MIT.
+## Run it
+```sh
+npm ci && npm run typecheck && npm test
+npm run dev:cli        # local CLI
+npm run dev:hosted     # hosted server, see docs/HOSTING.md
+```
+MIT licensed. Rules for contributors and agents: `AGENTS.md`. Visual style: `TASTE.md`.

@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
-const fresh = () => ({ ...process.env, PERMIT_MCP_HOME: mkdtempSync(join(tmpdir(), 'bcmcp-audit-')), BRAIN_DIR: '' });
+const fresh = () => ({ ...process.env, PERMIT_MCP_HOME: mkdtempSync(join(tmpdir(), 'bcmcp-audit-')), BRAIN_DIR: '', BCMCP_BRAIN: '1' });
 const cli = (env, args, input) => spawnSync(process.execPath, ['src/cli.ts', ...args], { env, input, encoding: 'utf8', timeout: 5000 });
 const ok = (result) => {
   assert.equal(result.status, 0, result.stderr || String(result.error ?? ''));
@@ -54,7 +54,7 @@ test('invalid inspection dates are rejected before approval', () => {
 test('brain notes with distinct titles survive when their slugs match', async () => {
   process.env.PERMIT_MCP_HOME = fresh().PERMIT_MCP_HOME;
   delete process.env.BRAIN_DIR;
-  const {saveNote, searchNotes} = await import('../src/brain.ts');
+  const {saveNote, searchNotes} = await import('../src/brain/notes.ts');
   saveNote({ type: 'job', title: 'Lot 7-A', body: 'first job', source: 'human' });
   saveNote({ type: 'job', title: 'Lot 7 A', body: 'second job', source: 'human' });
   assert.throws(() => saveNote({type: 'job', title: '!', body: '', source: 'human'}), /Title needed/);

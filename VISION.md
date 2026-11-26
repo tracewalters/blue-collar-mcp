@@ -1,46 +1,27 @@
-# Project Vision
+# Vision
 
 ## One line
-A guided AI crew for residential trades, inside Claude chat. One shared brain, one set of rules, every tool connected.
+One MCP for every permit portal. Ask Claude, or open your dashboard.
 
 ## Who it's for
-Architects, drafters, interior designers, landscape and pool designers, GCs, home builders, and subs like electricians and plumbers. Mostly owner-run shops and small teams, many new to AI.
-
-## The problem
-Business info is scattered across Gmail, Drive, Finder, texts, a CRM, QuickBooks, and city portals. The owner and team get different answers from outdated sources, and nobody has time to learn a new tool.
+General contractors, subs and builders in residential work who juggle permits and inspections across many city portals (Shape PHX, Tyler EnerGov, Accela, OpenGov and more). Starting with Phoenix metro.
 
 ## The experience
-1. Add the Blue Collar MCP to Claude (the owner does it once; each person signs in).
-2. Run a setup command, for example `/brain-setup`.
-3. Claude asks multiple-choice questions, gives exact links and steps, connects your sources, and ingests what you already have.
-4. Pick a rule pack, or let Claude propose rules mined from your own history.
-5. Ask in plain English. Everyone on the team gets the same, short, correct answer.
+1. Add the connector in Claude and say "open my permit dashboard".
+2. Connect your city portals once on the website. Credentials never go through chat.
+3. Ask Claude anything about your permits. The dashboard shows the same data.
 
-## Packages
-brain, rules, permits, books, crm, inventory, then subs, field, docs, comms. Each ships with its own guided setup (see `docs/ONBOARDING.md`).
-
-## Permits (first package, already built)
-- A CLI per portal platform; the MCP is a thin layer over the same code.
-- Any Phoenix-metro city. When a portal has no adapter yet, an agent builds one from a playbook, the user reviews it, and it is shared with everyone.
-- Common data model, encrypted vault, two-phase writes (propose, then confirm), and credentials never go through the model.
-- Self-improving: fixtures plus canaries tell an agent when a portal changed (`docs/SELF_IMPROVING.md`).
+## How it's built
+- One adapter per portal platform. Each is a CLI first; the MCP and site sit on the same code.
+- API first, browser only when needed. Public data where it exists (Shape PHX), your own login for live detail.
+- Common data model. Writes are two-phase (propose, then confirm). Each company has its own vault.
+- Self-improving: fixtures plus a daily canary tell an agent when a portal changed (`docs/SELF_IMPROVING.md`).
 
 ## Principles
-- Beginner-friendly first. Plain English, one question at a time.
-- One source of truth, with `updated` dates so stale data is visible.
-- Writes always need a confirm. Secrets never go in chat.
-- Never touch a portal or account that isn't the user's own.
-- Few dependencies, few files, plain code.
+- One feature at a time. Permits first.
+- Plain English for tradespeople. Speed over polish.
+- Never touch a portal with anyone's account but their own.
+- Few files, few dependencies.
 
-## Business model
-Free to start (brain, rules, permits). Paid on usage: ingest credits, seats, new portal builds, automations (`docs/MONETIZATION.md`). Hosted on our own VPS; open source and self-hostable.
-
-## Not this
-RIG / Stanley 2.0 is the private power system for one company. This is the simple public product.
-
-## Roadmap
-1. Brain and rules: guided setup, ingest, rule packs.
-2. Permits on the hosted multi-tenant server (Phoenix metro first).
-3. Books (read-only), then CRM adapters.
-4. Inventory and ordering.
-5. Subs, field, docs, comms.
+## Later
+Company brain, trade rule packs, books, CRM and inventory. See `docs/ROADMAP.md`.

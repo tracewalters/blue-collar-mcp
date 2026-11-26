@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 process.env.PERMIT_MCP_HOME = mkdtempSync(join(tmpdir(), "brain-"));
-const brain = await import("../src/brain.ts");
+const brain = await import("../src/brain/notes.ts");
 
 test("save, get and search a note", () => {
   const r = brain.saveNote({ type: "client", title: "Jane Smith", body: "Pool remodel at 12 Oak St. Prefers text.", source: "human" });

@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
-import { home, tenantDir } from "./vault.ts";
+import { home, tenantDir } from "../vault.ts";
 export { tenantDir };
 
 /** Company brain, v0: plain markdown files with frontmatter. Opens in Obsidian as-is. */

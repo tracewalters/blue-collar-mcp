@@ -1,8 +1,8 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { brainDir } from "./brain.ts";
-import { home } from "./vault.ts";
+import { brainDir } from "./notes.ts";
+import { home } from "../vault.ts";
 
 /**
  * Hosted HTTP is stateless and cannot pop a prompt, so writes are two steps:

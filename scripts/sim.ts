@@ -4,9 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 process.env.PERMIT_MCP_HOME = mkdtempSync(join(tmpdir(), "sim-"));
-import type { Item } from "../src/ingest.ts";
-const ing = await import("../src/ingest.ts");
-const brain = await import("../src/brain.ts");
+import type { Item } from "../src/brain/ingest.ts";
+const ing = await import("../src/brain/ingest.ts");
+const brain = await import("../src/brain/notes.ts");
 
 // Seeded random so runs are repeatable.
 let seed = 42;

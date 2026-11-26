@@ -7,13 +7,13 @@ import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
-import { BRAIN_INSTRUCTIONS, registerBrain } from "./brain-tools.ts";
-import { requestInfo, tenantDir } from "./brain.ts";
-import { registerIngest } from "./ingest-tools.ts";
+import { BRAIN_INSTRUCTIONS, registerBrain } from "./brain/tools.ts";
+import { requestInfo } from "./brain/notes.ts";
+import { registerIngest } from "./brain/ingest-tools.ts";
 import { listJurisdictions } from "./jurisdictions.ts";
 import { registerPermits } from "./permit-tools.ts";
 import * as svc from "./service.ts";
-import { home } from "./vault.ts";
+import { home, tenantDir } from "./vault.ts";
 
 /**
  * Hosted mode. Each company gets a secret connector URL /t/<secret>/mcp for Claude, and a website
