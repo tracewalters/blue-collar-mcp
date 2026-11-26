@@ -69,6 +69,9 @@ const help = `permit <command>
   permits [--city ID]           List permits (all connected cities by default)
   permit <city> <permitId>      Permit detail and inspections
   inspections [--city ID]       List inspections
+  jobs                          Permits grouped into jobs by site address
+  job-rename <jobId> <name>     Rename a job
+  job-merge <fromId> <intoId>   Fold one job into another
   schedule <city> <permitId> --type TYPE --date YYYY-MM-DD
                                 Propose an inspection (prints a token)
   commit <token>                Execute a proposed action
@@ -84,6 +87,9 @@ async function main() {
     case "permits": { const p = await svc.listPermits(flag("city")); return out(p, table(p.map((x) => ({ id: x.id, type: x.type, address: x.address, status: x.status })))); }
     case "permit": { const r = await svc.getPermit(a, b); return out(r, JSON.stringify(r, null, 2)); }
     case "inspections": { const i = await svc.listInspections(flag("city")); return out(i, table(i.map((x) => ({ id: x.id, permit: x.permitId, type: x.type, status: x.status })))); }
+    case "jobs": { const r = await svc.listJobs(); return out(r, table(r.jobs.map((j) => ({ id: j.id, name: j.name, permits: j.permits.map((p) => p.id).join(", ") }))) + (r.ungrouped.length ? `\nNo address: ${r.ungrouped.map((p) => p.id).join(", ")}` : "")); }
+    case "job-rename": { await svc.renameJobTo(a, pos.slice(2).join(" ")); return console.log("Renamed."); }
+    case "job-merge": { await svc.mergeJob(a, b); return console.log("Merged."); }
     case "schedule": {
       const type = flag("type"), date = flag("date");
       if (!type || !date) throw new Error("--type and --date are required");

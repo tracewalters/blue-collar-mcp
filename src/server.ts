@@ -123,6 +123,9 @@ const api = async (req: IncomingMessage, res: ServerResponse, path: string) => {
       }
       if (path === "/permits") return json(res, 200, await svc.listPermits(q.get("city") ?? undefined));
       if (path === "/inspections") return json(res, 200, await svc.listInspections(q.get("city") ?? undefined));
+      if (path === "/jobs") return json(res, 200, await svc.listJobs());
+      if (path === "/jobs/rename" && req.method === "POST") { const b = z.object({ job: z.string(), name: z.string().max(120) }).parse(await body(req)); return json(res, 200, await svc.renameJobTo(b.job, b.name)); }
+      if (path === "/jobs/merge" && req.method === "POST") { const b = z.object({ from: z.string(), into: z.string() }).parse(await body(req)); return json(res, 200, await svc.mergeJob(b.from, b.into)); }
       if (path === "/permit") return json(res, 200, await svc.getPermit(q.get("city")!, q.get("id")!));
       if (path === "/connect" && req.method === "POST") {
         if (tooMany(tenant.id)) return json(res, 429, { error: "Too many tries. Wait a minute." });
@@ -143,7 +146,7 @@ setInterval(() => { for (const [id, x] of sessions) if (Date.now() - x.last > 30
 
 const buildServer = (tenant: { id: string }, dash: string) => {
   const server = new McpServer({ name: "blue-collar-mcp", version: "0.1.0" }, {
-    instructions: "Blue Collar MCP: permits for residential contractors. ALWAYS call get_setup first. If needsSetup is true, call run_setup (it shows a form in the chat); if the client cannot show forms, ask the questions get_setup gives, with your multiple-choice question tool if you have one. Then call open_dashboard. Use the permit tools for any question about permits, inspections or deadlines. Keep replies under 6 short lines. If no city is connected, call open_dashboard and tell the user to connect their portal there. Never ask for portal passwords in chat." + (process.env.BCMCP_BRAIN ? " " + BRAIN_INSTRUCTIONS : ""),
+    instructions: "Blue Collar MCP: permits for residential contractors. ALWAYS call get_setup first. If needsSetup is true, call run_setup (it shows a form in the chat); if the client cannot show forms, ask the questions get_setup gives, with your multiple-choice question tool if you have one. Then call open_dashboard. Use the permit tools for any question about permits, inspections, jobs or deadlines. Keep replies under 6 short lines. If no city is connected, call open_dashboard and tell the user to connect their portal there. Never ask for portal passwords in chat." + (process.env.BCMCP_BRAIN ? " " + BRAIN_INSTRUCTIONS : ""),
   });
   registerSetup(server);
   registerSetupForm(server);

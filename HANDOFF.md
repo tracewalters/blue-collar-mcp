@@ -17,6 +17,7 @@ src/server.ts          hosted server: /t/<secret>/mcp, /auth/claim, /api/*; sess
 src/service.ts         the one place that does work (CLI, MCP and dashboard all call it)
 src/permit-tools.ts    permit MCP tools;  src/setup-tools.ts  onboarding tools (run_setup form)
 src/profile.ts         company profile + chosen cities (per company)
+src/jobs.ts            Jobs: permits grouped by site address; rename/merge saved per company (jobs.json)
 src/adapters/          demo, shape-phx (real), planned placeholders
 src/vault.ts           per-company encrypted vault; tenantDir (AsyncLocalStorage) scopes everything
 src/brain/             PARKED notes + ingest (BCMCP_BRAIN=1 turns on)

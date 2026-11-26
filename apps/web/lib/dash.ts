@@ -11,6 +11,9 @@ export type InspStatus = "needed" | "scheduled" | "completed" | "passed" | "fail
 export interface Inspection {
   id: string; permitId: string; type: string; status: InspStatus; scheduledFor?: string; notes?: string; jurisdiction?: string;
 }
+export interface JobPermit { id: string; jurisdiction: string; type: string; status: PermitStatus; address: string }
+export interface Job { id: string; name: string; addresses: string[]; cities: string[]; permits: JobPermit[] }
+export interface Jobs { jobs: Job[]; ungrouped: JobPermit[] }
 export interface City { id: string; name: string; state: string; platform: string; maturity: "ready" | "demo" | "planned" }
 export interface Connection { id: string; name: string; platform: string; connectedAt: string }
 export interface Profile {
