@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { join } from "node:path";
 import "./adapters/index.ts";
 import { getAdapter, portalDate, type Credentials } from "./adapter.ts";
-import { getJurisdiction } from "./jurisdictions.ts";
+import { getJurisdiction, listJurisdictions } from "./jurisdictions.ts";
 import { getProfile } from "./profile.ts";
 import { groupJobs, mergeJobs, renameJob } from "./jobs.ts";
 import { Plan } from "./schemas.ts";
@@ -27,6 +27,17 @@ export const listConnections = () =>
     const j = getJurisdiction(c.jurisdictionId);
     return { id: j.id, name: `${j.name}, ${j.state}`, platform: j.platform, connectedAt: c.connectedAt };
   });
+
+/** Connected cities, cities the user picked but has not signed in to (and whether we support them yet), and all cities. */
+export const connectionStatus = (key?: string) => {
+  const connections = listConnections(), on = new Set(connections.map((c) => c.id));
+  const pending = (getProfile()?.cities ?? []).filter((id) => !on.has(id)).map((id) => {
+    const j = getJurisdiction(id);
+    let supported = false; try { supported = getAdapter(j.platform).maturity !== "planned"; } catch {}
+    return { id: j.id, name: `${j.name}, ${j.state}`, supported };
+  });
+  return { ...(key ? { confirmed: redeemConnectKey(key) } : {}), connections, pending, available: listJurisdictions() };
+};
 
 // ---- Connection flow. The agent checks list_connections itself; a short key shown after sign-in is the
 // fallback the user can paste into chat. Single use, short-lived, tied to the Company. Never a password.

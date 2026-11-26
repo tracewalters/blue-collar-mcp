@@ -1,8 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getAdapter } from "./adapter.ts";
-import { getJurisdiction, listJurisdictions } from "./jurisdictions.ts";
-import { getProfile } from "./profile.ts";
 import * as svc from "./service.ts";
 
 const reply = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] });
@@ -21,15 +18,7 @@ export const registerPermits = (server: McpServer, opts: { writes: boolean; conn
     description: `Cities the user has logged into, and pending ones they chose but have not signed in to yet. If empty, ${opts.connectHint} After the user signs in on the connect page, call this to check; no paste needed. Only if they paste a connection key (like ABCD-1234), pass it as key. Never ask for passwords in chat.`,
     inputSchema: { key: z.string().max(20).optional().describe("Connection key the user pasted from the connect page") },
     annotations: { readOnlyHint: true },
-  }, ({ key }) => run(() => {
-    const connections = svc.listConnections(), on = new Set(connections.map((c) => c.id));
-    const pending = (getProfile()?.cities ?? []).filter((id) => !on.has(id)).map((id) => {
-      const j = getJurisdiction(id);
-      let supported = false; try { supported = getAdapter(j.platform).maturity !== "planned"; } catch {}
-      return { id: j.id, name: `${j.name}, ${j.state}`, supported };
-    });
-    return { ...(key ? { confirmed: svc.redeemConnectKey(key) } : {}), connections, pending, available: listJurisdictions() };
-  })());
+  }, ({ key }) => run(() => svc.connectionStatus(key))());
   
   server.registerTool("list_permits", {
     description: "List permits across connected city portals." + FRESH,
