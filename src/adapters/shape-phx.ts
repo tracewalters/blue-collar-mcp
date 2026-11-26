@@ -57,7 +57,12 @@ async function signIn(p: Page, c: Credentials): Promise<string | null> {
     await p.locator("a:text-is('Login')").first().evaluate((el: HTMLElement) => el.click()).catch(() => {});
     await p.waitForTimeout(7000);
   }
-  if (!/b2clogin/.test(p.url())) return "The sign-in page did not load. Try again in a minute.";
+  if (!/b2clogin/.test(p.url())) {
+    // Debug aid: when BCMCP_DEBUG_DIR is set, keep a screenshot of where we got stuck (taken before any password is typed).
+    if (process.env.BCMCP_DEBUG_DIR) await p.screenshot({ path: join(process.env.BCMCP_DEBUG_DIR, `shapephx-signin-${Date.now()}.png`) }).catch(() => {});
+    console.error(`shape-phx: sign-in page did not load, stuck at ${new URL(p.url()).host}${new URL(p.url()).pathname}`);
+    return "The sign-in page did not load. Try again in a minute.";
+  }
   await p.locator("input[type=email], input#email, input[name*=mail i], input[placeholder*=mail i]").first().fill(c.username);
   await p.locator("input[type=password]").first().fill(c.password);
   await p.getByRole("button", { name: /sign in|log in|login/i }).first().click();
@@ -71,25 +76,37 @@ async function signIn(p: Page, c: Credentials): Promise<string | null> {
   return "Sign-in did not finish. Check the login at shapephx.phoenix.gov.";
 }
 
-/** Runs fn in a signed-in page. Reuses the saved session, signs in again if it expired. */
+const OP_TIMEOUT_MS = 170_000;
+const live = new Map<string, unknown>(); // refreshed browser state per user, so a re-login is reused by the next call
+
+/** Runs fn in a signed-in page. Reuses the saved session; if it went stale, signs in again in a clean browser. */
 const withPortal = <T>(s: Session, fn: (p: Page) => Promise<T>): Promise<T> => serial(async () => {
   const sess = s as unknown as Sess;
   const browser = await chromium.launch({ executablePath: chromePath(), headless: true, args: ["--no-sandbox"] });
-  try {
-    const ctx = await browser.newContext({ viewport: { width: 1400, height: 1000 }, storageState: sess.state as never });
-    const p = await ctx.newPage();
+  const work = (async () => {
+    let ctx = await browser.newContext({ viewport: { width: 1400, height: 1000 }, storageState: (live.get(sess.user) ?? sess.state) as never });
+    let p = await ctx.newPage();
     p.setDefaultTimeout(25_000);
     await p.goto(`${BASE}/s/permits`, { waitUntil: "domcontentloaded", timeout: 60_000 });
     await p.waitForTimeout(6000);
     if (!(await loggedIn(p))) {
+      // Stale cookies confuse the sign-in page, so start from a clean context.
+      await ctx.close();
+      ctx = await browser.newContext({ viewport: { width: 1400, height: 1000 } });
+      p = await ctx.newPage();
+      p.setDefaultTimeout(25_000);
       const err = await signIn(p, { username: sess.user, password: sess.pass });
-      if (err) throw new Error(err);
+      if (err) { console.error(`shape-phx sign-in failed: ${err}`); throw new Error(err); }
+      live.set(sess.user, await ctx.storageState());
       await p.goto(`${BASE}/s/permits`, { waitUntil: "domcontentloaded", timeout: 60_000 });
     }
     await p.locator("li.bgccApplicationWidgetItem").first().waitFor({ timeout: 30_000 }).catch(() => {});
     await p.waitForTimeout(1500);
-    return await fn(p);
-  } finally { await browser.close(); }
+    return fn(p);
+  })();
+  const limit = new Promise<never>((_, no) => setTimeout(() => no(new Error("Shape PHX took too long. Try again in a minute.")), OP_TIMEOUT_MS).unref());
+  try { return await Promise.race([work, limit]); }
+  finally { work.catch(() => {}); await browser.close().catch(() => {}); }
 });
 
 // ---- mapping portal wording to our schema
