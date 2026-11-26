@@ -1,35 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
-import { AskClaude, DashShell, Freshness, Loading, Note, Pill, Problem, SignedOut, StatusChip, darkBtn, dot, limeBtn, useApi, useFresh } from "@/components/Dash";
-import {
-  CLOSED, api, daysFrom, fmtDay, inspLabel, money, pendingCities, permitHref, permitLabel, problem,
-  type Inspection, type Inspections, type Job, type Jobs as JobList, type Me, type Permit, type Permits,
-} from "@/lib/dash";
+import { useState } from "react";
+import { AskClaude, DashShell, Freshness, Loading, Note, Pill, Problem, SignedOut, StatusChip, limeBtn, useBoard } from "@/components/Dash";
+import { CLOSED, daysFrom, fmtDay, inspLabel, money, permitHref, permitLabel, problem, type Inspection, type Me, type Permit } from "@/lib/dash";
 
 const views = [["all", "All"], ["action", "Needs you"], ["open", "Open"], ["closed", "Closed"]] as const;
 
 export default function Dashboard() {
   return (
     <DashShell>
-      {(me) => (
-        <>
-          <NeedsLogin n={pendingCities(me).length} />
-          {me.connections.length ? <Board me={me} /> : <NoCities />}
-        </>
-      )}
+      {(me) => (me.connections.length ? <Board me={me} /> : <NoCities />)}
     </DashShell>
-  );
-}
-
-function NeedsLogin({ n }: { n: number }) {
-  if (!n) return null;
-  return (
-    <Link href="/dashboard/connect" className="mt-8 flex min-h-12 items-center justify-between gap-3 rounded-xl border border-warn/40 bg-panel px-4 py-3 hover:bg-panel-2">
-      <span className="flex items-center gap-2 text-[15px]"><span className="h-2 w-2 shrink-0 rounded-full bg-warn" aria-hidden />{n} {n === 1 ? "city still needs" : "cities still need"} a login</span>
-      <span className="shrink-0 text-[15px] font-semibold">Connect →</span>
-    </Link>
   );
 }
 
@@ -44,19 +26,14 @@ function NoCities() {
 }
 
 function Board({ me }: { me: Me }) {
-  const permits = useFresh<Permits>("/permits");
-  const insp = useFresh<Inspections>("/inspections");
+  const board = useBoard();
   const [city, setCity] = useState("all");
   const [view, setView] = useState<(typeof views)[number][0]>("all");
 
-  for (const r of [permits.res, insp.res]) if (r && !r.ok && r.signedOut) return <SignedOut />;
-  if (!permits.res) return <Loading slow />;
-  if (!permits.res.ok) return <Problem message={permits.res.message} retry={permits.refresh} />;
-  const list = permits.res.data.permits;
-  const inspections = insp.res?.ok ? insp.res.data.inspections : [];
-  const at = [permits.res.data.fetchedAt, insp.res?.ok ? insp.res.data.fetchedAt : null].filter((x): x is string => !!x).sort()[0] ?? null;
-  const refreshError = permits.res.data.refreshError ?? (insp.res?.ok ? insp.res.data.refreshError : undefined);
-  const refresh = () => { permits.refresh(); insp.refresh(); };
+  if (board.signedOut) return <SignedOut />;
+  if (!board.res) return <Loading slow />;
+  if (!board.res.ok) return <Problem message={board.res.message} retry={board.fresh.onRefresh} />;
+  const { permits: list, inspections } = board;
   const cityName = (id: string) => me.connections.find((c) => c.id === id)?.name ?? id;
 
   const open = list.filter((p) => !CLOSED.includes(p.status));
@@ -80,17 +57,17 @@ function Board({ me }: { me: Me }) {
   return (
     <div className="mt-8 space-y-14">
       <div className="space-y-4">
-      <Freshness at={at} busy={permits.busy || insp.busy} error={refreshError} onRefresh={refresh} />
-      <section aria-label="Summary" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {tiles.map(([label, n, hot]) => (
-          <div key={label} className="rounded-2xl border border-line bg-panel p-5">
-            <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-ink-3">
-              {hot && <span className="h-2 w-2 rounded-full bg-bad" aria-label="Needs you" />}{label}
-            </p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{n}</p>
-          </div>
-        ))}
-      </section>
+        <Freshness {...board.fresh} />
+        <section aria-label="Summary" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {tiles.map(([label, n, hot]) => (
+            <div key={label} className="rounded-2xl border border-line bg-panel p-5">
+              <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-ink-3">
+                {hot && <span className="h-2 w-2 rounded-full bg-bad" aria-label="Needs you" />}{label}
+              </p>
+              <p className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{n}</p>
+            </div>
+          ))}
+        </section>
       </div>
 
       <section aria-labelledby="permits" className="min-w-0">
@@ -125,11 +102,9 @@ function Board({ me }: { me: Me }) {
         </ul>
       </section>
 
-      <Jobs permits={list} inspections={inspections} />
-
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <Timeline inspections={inspections} permits={list} failed={insp.res?.ok === false} loading={!insp.res} />
-        <AskClaude prompts={["Which permits need me this week?", "How is the job on Oak St going?", "What does the city want fixed on my electrical permit?", "What fees do I owe the city?"]} />
+        <Timeline inspections={inspections} permits={list} failed={board.inspFailed} loading={board.inspLoading} />
+        <AskClaude prompts={["Which permits need me this week?", "What does the city want fixed on my electrical permit?", "What fees do I owe the city?"]} />
       </div>
     </div>
   );
@@ -185,97 +160,5 @@ function Timeline({ inspections, permits, failed, loading }: { inspections: Insp
       </div>
       )}
     </section>
-  );
-}
-
-/** Permits grouped by site address. Rename and merge are saved for the whole company. */
-function Jobs({ permits, inspections }: { permits: Permit[]; inspections: Inspection[] }) {
-  const { res, reload } = useApi<JobList>("/jobs");
-  const [data, setData] = useState<JobList | null>(null);
-  const [open, setOpen] = useState<string | null>(null);
-  const [err, setErr] = useState("");
-  if (!res) return null;
-  if (!res.ok) return res.signedOut ? null : <section className="min-w-0"><h2 className="text-2xl font-semibold tracking-tight">Jobs</h2><p className="mt-2 text-ink-2">We couldn't load jobs right now. <button type="button" className="underline" onClick={reload}>Try again</button></p></section>;
-  const { jobs, ungrouped } = data ?? res.data;
-  const full = (id: string, city: string) => permits.find((p) => p.id === id && p.jurisdiction === city);
-  const worst = (j: Job) => j.permits.map((jp) => { const p = full(jp.id, jp.jurisdiction); return p ? { p, x: problem(p, inspections) } : null; })
-    .filter((v) => v !== null).sort((a, b) => a.x.rank - b.x.rank)[0];
-  const ranked = jobs.map((j) => ({ j, w: worst(j) })).sort((a, b) => (a.w?.x.rank ?? 9) - (b.w?.x.rank ?? 9) || a.j.name.localeCompare(b.j.name));
-  const save = async (path: string, body: object) => {
-    setErr("");
-    const r = await api<JobList>(path, body);
-    if (r.ok) { setData(r.data); setOpen(null); } else setErr(r.message);
-  };
-
-  return (
-    <section aria-labelledby="jobs" className="min-w-0">
-      <h2 id="jobs" className="text-2xl font-semibold tracking-tight">Jobs <span className="text-ink-3">{jobs.length}</span></h2>
-      <p className="mt-1 text-ink-2">Permits grouped by site address. Rename a job or merge two that are the same site.</p>
-      <ul className="mt-5 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-panel">
-        {jobs.length === 0 && <li className="p-6 text-ink-2">No jobs yet. Permits with a site address show up here.</li>}
-        {ranked.map(({ j, w }) => (
-          <li key={j.id} className="p-5">
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-              <div className="min-w-0">
-                <p className="text-lg font-semibold">{j.name}</p>
-                <p className="mt-0.5 text-[15px] text-ink-2">{j.permits.length} permit{j.permits.length === 1 ? "" : "s"} · {j.addresses.join(" · ")}</p>
-                {w?.x.why && w.x.tone && <div className="mt-2"><Note tone={w.x.tone}><span>{w.x.why} <span className="text-ink-3">({w.p.id})</span></span></Note></div>}
-                <ul className="mt-3 flex flex-wrap gap-2">
-                  {j.permits.map((p) => {
-                    const [label, tone] = permitLabel[p.status];
-                    return (
-                      <li key={`${p.jurisdiction}|${p.id}`} className="min-w-0">
-                        <Link href={permitHref(p)} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-panel-2 px-3 text-sm hover:bg-white/10">
-                          <span className={`h-2 w-2 shrink-0 rounded-full ${dot[tone]}`} aria-hidden />
-                          {p.type} <span className="font-mono text-ink-3">{p.id}</span><span className="sr-only">, {label}</span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-              <button type="button" className={`${darkBtn} w-fit`} aria-expanded={open === j.id} onClick={() => { setErr(""); setOpen(open === j.id ? null : j.id); }}>Edit</button>
-            </div>
-            {open === j.id && <JobEdit job={j} others={jobs.filter((o) => o.id !== j.id)} error={err} save={save} />}
-          </li>
-        ))}
-      </ul>
-      {ungrouped.length > 0 && (
-        <p className="mt-3 text-[15px] text-ink-3">No site address, not in a job: {ungrouped.map((p, i) => (
-          <span key={`${p.jurisdiction}|${p.id}`}>{i ? ", " : ""}<Link href={permitHref(p)} className="font-mono text-sm text-ink-2 underline">{p.id}</Link></span>
-        ))}</p>
-      )}
-    </section>
-  );
-}
-
-function JobEdit({ job, others, error, save }: { job: Job; others: Job[]; error: string; save: (path: string, body: object) => Promise<void> }) {
-  const [name, setName] = useState(job.name);
-  const [into, setInto] = useState(others[0]?.id ?? "");
-  const [busy, setBusy] = useState(false);
-  const go = (path: string, body: object) => async (e: FormEvent) => { e.preventDefault(); setBusy(true); await save(path, body); setBusy(false); };
-  const field = "min-h-11 min-w-0 flex-1 rounded-xl border border-line bg-panel-2 px-3 text-[15px] text-ink";
-  return (
-    <div className="mt-4 grid gap-3 rounded-xl border border-line p-4 sm:grid-cols-2">
-      <form onSubmit={go("/jobs/rename", { job: job.id, name })} className="min-w-0">
-        <label htmlFor={`n-${job.id}`} className="text-xs font-medium uppercase tracking-wide text-ink-3">Job name</label>
-        <div className="mt-1 flex gap-2">
-          <input id={`n-${job.id}`} value={name} maxLength={120} onChange={(e) => setName(e.target.value)} className={field} />
-          <button type="submit" disabled={busy || !name.trim()} className={darkBtn}>Save</button>
-        </div>
-      </form>
-      {others.length > 0 && (
-        <form onSubmit={go("/jobs/merge", { from: job.id, into })} className="min-w-0">
-          <label htmlFor={`m-${job.id}`} className="text-xs font-medium uppercase tracking-wide text-ink-3">Same site as</label>
-          <div className="mt-1 flex gap-2">
-            <select id={`m-${job.id}`} value={into} onChange={(e) => setInto(e.target.value)} className={field}>
-              {others.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select>
-            <button type="submit" disabled={busy || !into} className={darkBtn}>Merge</button>
-          </div>
-        </form>
-      )}
-      {error && <p className="text-[15px] text-bad sm:col-span-2" role="alert">{error}</p>}
-    </div>
   );
 }

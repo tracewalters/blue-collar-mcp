@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { ago, api, type Fresh, type Me, type Result, type Tone } from "@/lib/dash";
+import { ago, api, pendingCities, type Fresh, type Inspections, type Me, type Permits, type Result, type Tone } from "@/lib/dash";
 import { Chip } from "@/components/ui";
 
 // Dashboard building blocks. Follows /TASTE.md: status = small dot + words.
@@ -102,8 +103,8 @@ export function useFresh<T extends Fresh>(path: string) {
 export function Freshness({ at, busy, error, onRefresh }: { at: string | null; busy: boolean; error?: string; onRefresh: () => void }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <p className="flex items-center gap-2 text-[15px] text-ink-2" role="status" aria-live="polite">
-        {busy ? <><Spinner />Checking the city portal…</> : at ? <>Updated {ago(at)}</> : null}
+      <p className="flex flex-wrap items-center gap-2 text-[15px] text-ink-2" role="status" aria-live="polite">
+        {busy ? <><Spinner />Checking the city portal…</> : at ? <>Checked with the city {ago(at)}</> : <>Not checked with the city yet</>}
         {!busy && error && <span className="flex items-center gap-2 text-ink-3"><span className="h-2 w-2 rounded-full bg-warn" aria-hidden />Last check failed</span>}
       </p>
       <button type="button" onClick={onRefresh} disabled={busy} className={darkBtn}>{busy ? "Refreshing…" : "Refresh"}</button>
@@ -113,29 +114,81 @@ export function Freshness({ at, busy, error, onRefresh }: { at: string | null; b
 
 export const Spinner = () => <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-white/20 border-t-white" aria-hidden />;
 
-/** Page frame: loads /api/me, handles signed-out and server-down, draws the header. */
+/**
+ * Page frame for every dashboard page: loads /api/me, handles signed-out and server-down,
+ * draws the header, the tab row (Permits, Jobs, Cities) and the "city needs a login" banner.
+ * Pages put their content in the same order: freshness row, summary, lists, Ask Claude.
+ */
 export function DashShell({ children, title }: { title?: ReactNode; children: (me: Me, reloadMe: () => void) => ReactNode }) {
   const { res, reload } = useApi<Me>("/me");
   const [out, setOut] = useState(false);
+  const path = usePathname();
   if (out || (res && !res.ok && res.signedOut)) return <SignedOut />;
   if (!res) return <Loading />;
   if (!res.ok) return <Problem message={res.message} retry={reload} />;
   const signOut = async () => { await api("/signout", {}); setOut(true); };
+  const pending = pendingCities(res.data).length;
+  const tabs: [string, string, boolean][] = [
+    ["/dashboard", "Permits", path === "/dashboard" || path.startsWith("/dashboard/permit")],
+    ["/dashboard/jobs", "Jobs", path.startsWith("/dashboard/jobs")],
+    ["/dashboard/connect", "Cities", path.startsWith("/dashboard/connect")],
+  ];
   return (
     <div className="pt-8 sm:pt-12">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-sm uppercase tracking-wide text-ink-3">{res.data.userName ? `${res.data.userName} · ` : ""}Permit dashboard</p>
-          <h1 className="display mt-2 break-words text-4xl sm:text-6xl">{title ?? res.data.company}</h1>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/dashboard/connect" className={darkBtn}>Cities</Link>
-          <button type="button" onClick={signOut} className={darkBtn}>Sign out</button>
-        </div>
+      <header className="min-w-0">
+        <p className="text-sm uppercase tracking-wide text-ink-3">{res.data.userName ? `${res.data.userName} · ` : ""}{res.data.company}</p>
+        <h1 className="display mt-2 break-words text-4xl sm:text-6xl">{title ?? "Permits"}</h1>
       </header>
+      <nav aria-label="Dashboard" className="mt-6 flex items-center justify-between gap-2 border-b border-line">
+        <ul className="no-scrollbar flex min-w-0 gap-5 overflow-x-auto sm:gap-7">
+          {tabs.map(([href, label, on]) => (
+            <li key={href}>
+              <Link href={href} aria-current={on ? "page" : undefined}
+                className={`-mb-px flex min-h-11 items-center border-b-2 text-[15px] font-medium ${on ? "border-white text-ink" : "border-transparent text-ink-3 hover:text-ink-2"}`}>
+                {label}
+                {label === "Cities" && pending > 0 && <span className="ml-2 h-2 w-2 rounded-full bg-warn" aria-label={`${pending} need a login`} />}
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <button type="button" onClick={signOut} className="min-h-11 shrink-0 text-[15px] text-ink-3 hover:text-ink-2">Sign out</button>
+      </nav>
+      {pending > 0 && !path.startsWith("/dashboard/connect") && <NeedsLogin n={pending} />}
       {children(res.data, reload)}
     </div>
   );
+}
+
+function NeedsLogin({ n }: { n: number }) {
+  return (
+    <Link href="/dashboard/connect" className="mt-6 flex min-h-12 items-center justify-between gap-3 rounded-xl border border-warn/40 bg-panel px-4 py-3 hover:bg-panel-2">
+      <span className="flex items-center gap-2 text-[15px]"><span className="h-2 w-2 shrink-0 rounded-full bg-warn" aria-hidden />{n} {n === 1 ? "city still needs" : "cities still need"} a login</span>
+      <span className="shrink-0 text-[15px] font-semibold">Connect →</span>
+    </Link>
+  );
+}
+
+/** Permits and inspections for the whole company, each kept fresh, with one freshness row for both. */
+export function useBoard() {
+  const permits = useFresh<Permits>("/permits");
+  const insp = useFresh<Inspections>("/inspections");
+  const signedOut = [permits.res, insp.res].some((r) => r && !r.ok && r.signedOut);
+  const p = permits.res?.ok ? permits.res.data : null;
+  const i = insp.res?.ok ? insp.res.data : null;
+  return {
+    signedOut,
+    res: permits.res,
+    permits: p?.permits ?? [],
+    inspections: i?.inspections ?? [],
+    inspLoading: !insp.res,
+    inspFailed: insp.res?.ok === false,
+    fresh: {
+      at: [p?.fetchedAt, i?.fetchedAt].filter((x): x is string => !!x).sort()[0] ?? null, // the older of the two
+      busy: permits.busy || insp.busy,
+      error: p?.refreshError ?? i?.refreshError,
+      onRefresh: () => { permits.refresh(); insp.refresh(); },
+    },
+  };
 }
 
 export function AskClaude({ prompts }: { prompts: string[] }) {
