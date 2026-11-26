@@ -21,6 +21,8 @@ export interface PortalAdapter {
   listPermits(j: Jurisdiction, s: Session): Promise<Permit[]>;
   getPermit(j: Jurisdiction, s: Session, id: string): Promise<Permit | undefined>;
   listInspections(j: Jurisdiction, s: Session, permitId?: string): Promise<Inspection[]>;
+  /** One inspection with the inspector's comments. Read on demand, never in the list. */
+  getInspection(j: Jurisdiction, s: Session, permitId: string, inspectionId: string): Promise<Inspection | undefined>;
   proposeInspection(j: Jurisdiction, s: Session, req: { permitId: string; type: string; date: string }): Promise<Plan>;
   commit(j: Jurisdiction, s: Session, plan: Plan): Promise<{ ok: boolean; message: string }>;
 }

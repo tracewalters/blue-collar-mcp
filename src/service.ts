@@ -44,6 +44,14 @@ export async function getPermit(jurisdictionId: string, permitId: string) {
   return { permit: p, inspections: await a.listInspections(j, s, permitId) };
 }
 
+/** One inspection with the inspector's comments. */
+export async function getInspection(jurisdictionId: string, permitId: string, inspectionId: string) {
+  const { j, a, s } = ctx(jurisdictionId);
+  const i = await a.getInspection(j, s, permitId, inspectionId);
+  if (!i || i.permitId.toLowerCase() !== permitId.toLowerCase()) throw new Error(`Inspection ${inspectionId} not found on permit ${permitId} in ${j.name}`);
+  return { ...i, jurisdiction: j.id };
+}
+
 export async function listInspections(jurisdictionId?: string) {
   const ids = jurisdictionId ? [jurisdictionId] : listConnections().map((c) => c.id);
   const out = await Promise.all(ids.map(async (id) => {

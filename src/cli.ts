@@ -69,13 +69,14 @@ const help = `permit <command>
   permits [--city ID]           List permits (all connected cities by default)
   permit <city> <permitId>      Permit detail and inspections
   inspections [--city ID]       List inspections
+  inspection <city> <permitId> <inspectionId>   One inspection with the inspector's comments
   schedule <city> <permitId> --type TYPE --date YYYY-MM-DD
                                 Propose an inspection (prints a token)
   commit <token>                Execute a proposed action
 Add --json for machine-readable output.`;
 
 async function main() {
-  const [cmd, a, b] = pos;
+  const [cmd, a, b, c] = pos;
   switch (cmd) {
     case "login": return loginFlow();
     case "logout": svc.logout(a); return console.log("Removed.");
@@ -84,6 +85,7 @@ async function main() {
     case "permits": { const p = await svc.listPermits(flag("city")); return out(p, table(p.map((x) => ({ id: x.id, type: x.type, address: x.address, status: x.status })))); }
     case "permit": { const r = await svc.getPermit(a, b); return out(r, JSON.stringify(r, null, 2)); }
     case "inspections": { const i = await svc.listInspections(flag("city")); return out(i, table(i.map((x) => ({ id: x.id, permit: x.permitId, type: x.type, status: x.status })))); }
+    case "inspection": { const i = await svc.getInspection(a, b, c); return out(i, `${i.id} ${i.type}: ${i.status}${i.scheduledFor ? ` (${i.scheduledFor})` : ""}\nInspector: ${i.comments ?? "no comments"}`); }
     case "schedule": {
       const type = flag("type"), date = flag("date");
       if (!type || !date) throw new Error("--type and --date are required");

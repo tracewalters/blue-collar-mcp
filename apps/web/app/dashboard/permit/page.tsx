@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
-import { AskClaude, DashShell, Loading, Note, Problem, SignedOut, StatusChip, useApi } from "@/components/Dash";
+import { Suspense, useState } from "react";
+import { AskClaude, darkBtn, DashShell, Loading, Note, Problem, SignedOut, StatusChip, useApi } from "@/components/Dash";
 import { daysFrom, fmtDay, inspLabel, money, permitLabel, problem, type Inspection, type Me, type Permit } from "@/lib/dash";
 
 export default function PermitPage() {
@@ -65,21 +65,41 @@ function Body({ me, city, id }: { me: Me; city: string; id: string }) {
           {sorted.map((i) => {
             const [l, t] = inspLabel[i.status];
             return (
-              <li key={i.id} className="flex flex-wrap items-start justify-between gap-3 p-5">
-                <div className="min-w-0">
-                  <p className="font-semibold">{i.type}</p>
-                  <p className="mt-0.5 text-[15px] text-ink-2">{i.scheduledFor ? fmtDay(i.scheduledFor) : "No date yet"}</p>
-                  {i.notes && <p className="mt-1 text-[15px] text-ink-2">Inspector: “{i.notes}”</p>}
+              <li key={i.id} className="p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold">{i.type}</p>
+                    <p className="mt-0.5 text-[15px] text-ink-2">{i.scheduledFor ? fmtDay(i.scheduledFor) : "No date yet"}</p>
+                    {i.notes && i.notes.toLowerCase() !== l.toLowerCase() && <p className="mt-1 text-[15px] text-ink-2">City result: {i.notes}</p>}
+                  </div>
+                  <StatusChip label={l} tone={t} />
                 </div>
-                <StatusChip label={l} tone={t} />
+                {(i.status === "passed" || i.status === "failed") && <Comments city={p.jurisdiction} permitId={p.id} inspectionId={i.id} />}
               </li>
             );
           })}
         </ul>
       </section>
 
-      <AskClaude prompts={[`What's next on ${p.id}?`, `When does the ${p.address} permit expire?`, `What inspections are left on ${p.address}?`]} />
+      <AskClaude prompts={[...(inspections.some((i) => i.status === "failed") ? [`What did the inspector say on ${p.id}?`] : []), `What's next on ${p.id}?`, `When does the ${p.address} permit expire?`, `What inspections are left on ${p.address}?`]} />
       <Link href="/dashboard" className="inline-block text-ink-2 hover:text-ink">← All permits</Link>
+    </div>
+  );
+}
+
+/** The inspector's comments, read on demand: on real portals this opens the city site and takes up to a minute. */
+function Comments({ city, permitId, inspectionId }: { city: string; permitId: string; inspectionId: string }) {
+  const [open, setOpen] = useState(false);
+  const { res, reload } = useApi<Inspection>(open ? `/inspection?city=${encodeURIComponent(city)}&permit=${encodeURIComponent(permitId)}&id=${encodeURIComponent(inspectionId)}` : null);
+  if (!open) return <button type="button" onClick={() => setOpen(true)} className={`${darkBtn} mt-3`}>Inspector comments</button>;
+  if (!res) return <p className="mt-3 text-[15px] text-ink-3" aria-live="polite">Reading the city portal…</p>;
+  if (!res.ok) return (
+    <p className="mt-3 text-[15px] text-ink-2">{res.message} <button type="button" onClick={reload} className="min-h-11 px-1 font-semibold text-ink underline underline-offset-4">Try again</button></p>
+  );
+  return (
+    <div className="mt-3 max-w-2xl rounded-xl border border-line bg-panel-2 p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-ink-3">Inspector comments</p>
+      <p className="mt-2 whitespace-pre-line text-[15px] text-ink-2">{res.data.comments ?? "The inspector left no comments."}</p>
     </div>
   );
 }

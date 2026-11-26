@@ -17,8 +17,13 @@ const permits: Permit[] = [
 const inspections: Inspection[] = [
   { id: "INS-1", permitId: "BLD-2026-0142", type: "Framing", status: "needed" },
   { id: "INS-2", permitId: "BLD-2026-0142", type: "Foundation", status: "passed", scheduledFor: "2026-10-05" },
-  { id: "INS-3", permitId: "ELE-2026-0388", type: "Rough Electrical", status: "failed", scheduledFor: "2026-11-12", notes: "Missing box fill labels" },
+  { id: "INS-3", permitId: "ELE-2026-0388", type: "Rough Electrical", status: "failed", scheduledFor: "2026-11-12" },
 ];
+// What the inspector wrote. Only getInspection returns it, like a real portal's record page.
+const comments: Record<string, string> = {
+  "INS-2": "Footings and rebar per plan. Approved to pour.",
+  "INS-3": "Missing box fill labels at kitchen and bath circuits. Bond the panel ground. Reinspect after corrections.",
+};
 
 export const demoAdapter: PortalAdapter = {
   platform: "demo",
@@ -33,6 +38,10 @@ export const demoAdapter: PortalAdapter = {
   async listInspections(_j, _s, permitId) {
     const all = [...inspections, ...booked()];
     return permitId ? all.filter((i) => i.permitId === permitId) : all;
+  },
+  async getInspection(j, s, permitId, inspectionId) {
+    const i = (await demoAdapter.listInspections(j, s, permitId)).find((x) => x.id === inspectionId);
+    return i && { ...i, comments: comments[i.id] };
   },
   async proposeInspection(j, _s, r) {
     return {

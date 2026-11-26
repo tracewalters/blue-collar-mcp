@@ -208,6 +208,56 @@ async function readInspections(p: Page, permitId: string): Promise<Inspection[]>
   return out;
 }
 
+// ---- one inspection record (Stanley's `inspection <P> <INS>`): related list -> INS link -> /s/inspection/<id> label/value pairs.
+const INS_LABELS = ["Number", "Request Source", "Inspection Type", "Status", "Inspection Code", "Completed Date", "Inspection Comments", "Scheduled Start Date", "Preferred Date", "Scheduled Date", "Inspector", "Site Contact Name"];
+
+/** Label/value pairs from record-page text. A value runs until the next label; "Help X" / "Edit X" helper text is skipped. */
+export const recordFields = (text: string, labels = INS_LABELS): Record<string, string> => {
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  const out: Record<string, string> = {};
+  lines.forEach((l, i) => {
+    if (!labels.includes(l) || l in out) return;
+    const v: string[] = [];
+    for (const n of lines.slice(i + 1)) {
+      if (labels.includes(n)) break;
+      if (/^(Help|Edit) /.test(n) && labels.includes(n.slice(5))) continue;
+      v.push(n);
+    }
+    out[l] = v.join("\n");
+  });
+  return out;
+};
+const dateIn = (s = "") => { const m = s.match(/\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4}|[A-Z][a-z]{2,8} \d{1,2}, \d{4}/); return m ? isoDay(m[0]) : undefined; };
+
+async function readInspection(p: Page, permitId: string, insId: string): Promise<Inspection | undefined> {
+  const rid = await recordId(p, permitId);
+  await p.goto(`${BASE}/s/permit2/related/${rid}/MUSW__Inspections__r`, { waitUntil: "domcontentloaded" });
+  const link = p.locator("a", { hasText: new RegExp(`^\\s*${insId}\\s*$`) }).first();
+  // The related list lazy-loads ("6+ items"): scroll its scroller until the INS shows up.
+  for (let i = 0; i < 10 && !(await link.count()); i++) {
+    await p.waitForTimeout(i ? 2500 : 4000);
+    await p.evaluate(() => { document.querySelectorAll(".uiScroller,.scroller,[class*=scroller]").forEach((e) => { e.scrollTop = e.scrollHeight; }); window.scrollTo(0, document.body.scrollHeight); });
+  }
+  if (!(await link.count())) return undefined;
+  const href = await link.getAttribute("href");
+  if (!href || !/^\/s\/inspection\//.test(new URL(href, BASE).pathname)) return undefined;
+  await p.goto(new URL(href, BASE).href, { waitUntil: "domcontentloaded" });
+  await p.getByText("Inspection Type", { exact: true }).first().waitFor({ timeout: 30_000 }).catch(() => {});
+  await p.waitForTimeout(1500);
+  // Form elements pierce the shadow DOM; the page text is the fallback.
+  const items = (await p.locator(".slds-form-element").allInnerTexts().catch(() => [] as string[])).join("\n");
+  let f = recordFields(items);
+  if (!f["Inspection Type"]) f = recordFields(await p.locator("body").innerText());
+  if (!f["Inspection Type"] && !f.Status) throw new Error(`Could not read ${insId} on Shape PHX.`);
+  const raw = f.Status ?? "";
+  return {
+    id: f.Number || insId, permitId, type: f["Inspection Type"] ?? "", status: /^(pending|requested)$/i.test(raw) ? "needed" : inspStatus(raw),
+    scheduledFor: dateIn(f["Completed Date"]) ?? dateIn(f["Scheduled Start Date"]) ?? dateIn(f["Scheduled Date"]),
+    notes: raw || undefined,
+    comments: f["Inspection Comments"] || undefined,
+  };
+}
+
 export const shapePhx: PortalAdapter = {
   platform: "shape-phx",
   maturity: "ready",
@@ -247,6 +297,13 @@ export const shapePhx: PortalAdapter = {
       if (failed.length === need.length) throw new Error(`Could not read inspections. ${failed[0]}`);
     }
     return ids.flatMap((id) => (cache.get(`i:${user}:${id}`)?.data as Inspection[] | undefined) ?? []);
+  },
+
+  async getInspection(_j, s, permitId, inspectionId) {
+    // Ids go into page matching, so only accept the portal's own shape.
+    if (!/^INS-\d+$/.test(inspectionId)) throw new Error(`"${inspectionId}" is not a Shape PHX inspection number (like INS-00985207).`);
+    const user = (s as unknown as Sess).user;
+    return cached(`ins:${user}:${permitId}:${inspectionId}`, () => withPortal(s, (p) => readInspection(p, permitId, inspectionId)));
   },
 
   async proposeInspection() { throw new Error("Booking inspections on Shape PHX is not enabled yet."); },
