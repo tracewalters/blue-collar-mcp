@@ -56,6 +56,7 @@ Starting point: the Higgsfield MCP site (higgsfield.ai/mcp). We borrow its *prin
 - Max width 1280px. Center hero. Catalog: 300px sticky sidebar plus a flexible column.
 - Mobile first: the sidebar becomes a horizontal pill scroller. Feature rows stack (preview on top). Tap targets at least 44px.
 - Fixed aspect ratios on previews are desktop only; on mobile let them grow, or content gets clipped.
+- Status chips inside a grid stretch to full width on phones. Give them `w-fit`.
 - Grid children that hold horizontal scrollers need `min-w-0`, or the page scrolls sideways on phones. Always check `scrollWidth == 390` at mobile width.
 
 ## Voice
@@ -64,7 +65,7 @@ Starting point: the Higgsfield MCP site (higgsfield.ai/mcp). We borrow its *prin
 - Never: "revolutionize", "AI-powered", "seamless", "leverage", emoji in UI copy.
 
 ## Applying it elsewhere
-- **Dashboards:** same dark tokens. Numbers big and white, labels `ink-3` uppercase 12px. Charts: white or lime lines on black, gridlines at `line`. Status as small colored dots plus words.
+- **Dashboards:** same dark tokens. Numbers big and white, labels `ink-3` uppercase 12px. Charts: white or lime lines on black, gridlines at `line`. Status as small colored dots plus words. Sort problems first (corrections, failed inspections, expiring soon). Problem counts get a red dot, not lime.
 - **PDFs and print:** flip to light. White paper, `#111` ink, grey `#666` body. Lime only as a highlight band behind a word or a thin rule, never as text on white. Display headline stays Space Grotesk uppercase. Put the command or job name in a mono chip in the header.
 - **Chat replies (MCP output):** short. Lead with the answer, then a small table if needed. Show the next command to run.
 
@@ -77,3 +78,4 @@ Starting point: the Higgsfield MCP site (higgsfield.ai/mcp). We borrow its *prin
 ## Changelog
 - 2026-11-22: First version, from the Higgsfield MCP page. Hi-vis lime chosen because it is already safety-vest color.
 - 2026-11-22: Website rebuilt on these rules. Added the mobile layout lessons.
+- 2026-11-26: Permit dashboard (`/dashboard`) built on these rules. Added status chip and problem-first notes.

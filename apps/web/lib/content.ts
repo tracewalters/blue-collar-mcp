@@ -16,12 +16,21 @@ export interface Pkg {
 
 export const packages: Pkg[] = [
   {
+    id: "permits",
+    name: "Permits",
+    command: "/permits-setup",
+    what: "Every city permit portal in one chat. Status, inspections, deadlines.",
+    examples: ["Phoenix-metro cities, one portal at a time", "A private dashboard with every permit and inspection"],
+    status: "Ready",
+    steps: ["Say “open my permit dashboard” in Claude","Pick your city","Sign in to the portal on your dashboard, never in chat","Ask Claude what needs you"],
+  },
+  {
     id: "brain",
     name: "Brain",
     command: "/brain-setup",
     what: "Your company memory. Clients, jobs, people, meetings, and decisions in one place.",
     examples: ["Pulls in Gmail, Drive, folders, texts, and meeting notes", "Flags anything that's out of date"],
-    status: "Ready",
+    status: "Coming next",
     steps: ["Pick where your brain lives: hosted, Obsidian, Drive, or Notion","Invite your team","Pick your sources: Gmail, Drive, texts, CRM, QuickBooks","Connect each one with a secure link","Preview what gets saved, then confirm","Ask about your latest job"],
   },
   {
@@ -30,17 +39,8 @@ export const packages: Pkg[] = [
     command: "/rules-setup",
     what: "How your shop does things. Pricing, voice, process, and safety, the same for everyone.",
     examples: ["Start from a trade rule pack", "Or let Claude suggest rules from your own history"],
-    status: "Ready",
+    status: "Coming next",
     steps: ["Pick a rule pack, mine your history, or start from scratch","Keep, edit, or drop each rule","Set reply style and voice","Publish version 1 for the whole team"],
-  },
-  {
-    id: "permits",
-    name: "Permits",
-    command: "/permits-setup",
-    what: "Every city permit portal in one chat. Status, inspections, deadlines.",
-    examples: ["Any Phoenix-metro city", "Alerts for inspections, expirations, resubmittals"],
-    status: "Ready",
-    steps: ["Pick your cities","Sign in to each portal with a secure link","Import permits you already have","Turn on inspection and deadline alerts"],
   },
   {
     id: "books",
@@ -48,7 +48,7 @@ export const packages: Pkg[] = [
     command: "/books-setup",
     what: "Read your QuickBooks or Xero in plain English. Read-only to start.",
     examples: ["“What did we make on the Smith job?”", "Suggests categories, you approve"],
-    status: "Coming next",
+    status: "Later",
     steps: ["Pick QuickBooks, Xero, or a spreadsheet","Connect read-only","Check it with a profit and loss pull","Approve suggested category rules"],
   },
   {
@@ -57,7 +57,7 @@ export const packages: Pkg[] = [
     command: "/crm-setup",
     what: "Leads, jobs, quotes, and price books from the tool you already use.",
     examples: ["JobTread, Jobber, Buildertrend, HubSpot", "Or a spreadsheet, or nothing at all"],
-    status: "Coming next",
+    status: "Later",
     steps: ["Pick JobTread, Jobber, Buildertrend, HubSpot, or none","Connect it","Match your fields","Import into your brain and confirm"],
   },
   {
@@ -126,7 +126,7 @@ export const trades = [
   "Plumbers",
 ];
 
-// The /brain-setup guided flow, shown as a chat.
+// A guided setup, shown as a chat.
 export interface Turn {
   ask: string;
   choices?: string[];
@@ -134,29 +134,11 @@ export interface Turn {
   note?: string;
 }
 
-export const brainSetup: Turn[] = [
-  {
-    ask: "Where should your company brain live?",
-    choices: ["Hosted by us (nothing to install)", "Obsidian on your computer", "A Google Drive folder", "Notion"],
-    pick: 0,
-  },
-  { ask: "How big is your team?", choices: ["Just me", "2 to 5 people", "6 or more"], pick: 1 },
-  {
-    ask: "Where do you keep info today? Pick all that apply.",
-    choices: ["Gmail", "Google Drive", "Text messages", "JobTread / Jobber / Buildertrend", "QuickBooks"],
-    pick: 0,
-  },
-  {
-    ask: "Open this secure link and sign in to Gmail. I never see your password.",
-    note: "Connected. I found 2,140 emails from the last 12 months. Here are 10 samples. Save them?",
-  },
-];
-
 export const freeTier = [
-  "Brain, with a starter note limit and one import per source",
-  "Rule packs, plus one custom rule set",
   "Permits for supported cities",
+  "Your private permit dashboard",
   "1 seat",
+  "Brain and rule packs when they launch",
 ];
 
 export const paidLevers = [
@@ -166,4 +148,13 @@ export const paidLevers = [
   { name: "Automations and alerts", why: "Inspection reminders, a morning brief, follow-up drafts." },
   { name: "Premium rule packs", why: "Deeper trade templates and checklists." },
   { name: "Heavy use", why: "A simple meter for big days of chat and tool use." },
+];
+
+// The permit flow, shown as a chat. This is what works today.
+export const permitsSetup: Turn[] = [
+  { ask: "Which city pulls your permits?", choices: ["Phoenix", "Mesa", "Scottsdale", "Another Phoenix-metro city"], pick: 0 },
+  {
+    ask: "Open your private dashboard and sign in to the city portal there. I never see your password.",
+    note: "Connected. You have 3 permits. One needs corrections: ELE-2026-0388 at 12 Oak St.",
+  },
 ];

@@ -5,8 +5,8 @@ import { packages, rulePacks, trades } from "@/lib/content";
 
 const steps = [
   ["Add it to Claude", "The owner adds it once. Each person signs in."],
-  ["Type a setup command", "Claude asks multiple-choice questions. Pick A, B, or C."],
-  ["Ask in plain English", "Everyone on the team gets the same answer."],
+  ["Connect your city", "Sign in to your permit portal on your private dashboard."],
+  ["Ask in plain English", "“Which inspections are this week?”"],
 ];
 
 export default function Home() {
@@ -17,13 +17,13 @@ export default function Home() {
         <div className="glow absolute inset-x-0 top-10 -z-10 h-96" aria-hidden />
         <p className="mx-auto w-fit rounded-full border border-line bg-panel px-3 py-1 text-sm text-ink-2">
           <span className="mr-2 rounded-md bg-lime px-1.5 py-0.5 text-xs font-semibold text-lime-ink">New</span>
-          Permits now works with any Phoenix-metro city
+          Permits is live. More packages coming later.
         </p>
         <h1 className="display mx-auto mt-8 max-w-5xl text-5xl sm:text-7xl lg:text-[88px]">
-          One answer for your <span className="text-lime">whole shop</span>, right in Claude
+          Every permit, <span className="text-lime">one place</span>, right in Claude
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-lg text-ink-2">
-          A guided AI crew for residential trades. It learns your jobs, clients, and rules. No tech skills needed.
+          Connect your city permit portals once. Ask Claude what needs you. See it all on a private dashboard.
         </p>
         <div className="mt-9 flex flex-wrap justify-center gap-3">
           <Button href="/docs#start" kind="white">Add Blue Collar to Claude</Button>
@@ -86,7 +86,7 @@ export default function Home() {
         <div className="glow absolute inset-0 -z-0" aria-hidden />
         <div className="relative">
           <h2 className="display text-4xl sm:text-6xl">Free to <span className="text-lime">start</span></h2>
-          <p className="mx-auto mt-4 max-w-md text-ink-2">Brain, rules, and permits are free. Pay only when you need more.</p>
+          <p className="mx-auto mt-4 max-w-md text-ink-2">Permits are free. Pay only when you need more.</p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Button href="/docs#start">Start free</Button>
             <Button href="/pricing" kind="dark">See pricing</Button>

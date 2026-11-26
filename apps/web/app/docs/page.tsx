@@ -26,7 +26,7 @@ export default function Docs() {
       </Card>
 
       <H2 id="setup">2. Run a setup command</H2>
-      <p className="mt-3 text-ink-2">Type one of these in a Claude chat. Start with <code className="font-mono">/brain-setup</code>.</p>
+      <p className="mt-3 text-ink-2">Type one of these in a Claude chat. Start with <code className="font-mono">/permits-setup</code>.</p>
       <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-panel">
         <table className="w-full text-left">
           <caption className="sr-only">Setup commands</caption>
