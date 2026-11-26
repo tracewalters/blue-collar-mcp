@@ -7,7 +7,8 @@ export type Session = Record<string, unknown>;
 
 /** Who the city calls on site. Comes from the Company profile. Shape PHX needs a phone or an email. */
 export type SiteContact = { name: string; phone?: string; email?: string };
-export type InspectionRequest = { permitId: string; type: string; date: string; contact: SiteContact };
+/** inspectionId pins the exact inspection (e.g. INS-00985207); without it the open one of that type is used. */
+export type InspectionRequest = { permitId: string; type: string; inspectionId?: string; date: string; contact: SiteContact };
 
 /** "2026-10-26" -> "Oct 26, 2026", the format city portals show and accept. */
 export const portalDate = (iso: string) =>
@@ -25,6 +26,8 @@ export interface PortalAdapter {
   platform: string;
   /** "ready" adapters talk to real portals. "planned" ones are placeholders. */
   maturity: "ready" | "demo" | "planned";
+  /** False until a booking dry run has worked against the real portal. Booking is refused until then. */
+  bookingVerified: boolean;
   login(j: Jurisdiction, creds: Credentials): Promise<LoginResult>;
   listPermits(j: Jurisdiction, s: Session): Promise<Permit[]>;
   getPermit(j: Jurisdiction, s: Session, id: string): Promise<Permit | undefined>;

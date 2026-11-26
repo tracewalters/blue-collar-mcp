@@ -36,6 +36,7 @@ const slow = () => new Promise((r) => setTimeout(r, Number(process.env.BCMCP_DEM
 export const demoAdapter: PortalAdapter = {
   platform: "demo",
   maturity: "demo",
+  bookingVerified: true,
   async login(_j, c) {
     return c.username === "demo" && c.password === "demo"
       ? { ok: true, session: { token: "demo-session" } }
@@ -53,7 +54,7 @@ export const demoAdapter: PortalAdapter = {
     return i && { ...i, comments: comments[i.id] };
   },
   async proposeInspection(j, _s, r) {
-    const ins = inspections.find((i) => i.permitId === r.permitId && i.status === "needed" && i.type.toLowerCase() === r.type.toLowerCase());
+    const ins = inspections.find((i) => i.permitId === r.permitId && i.status === "needed" && (r.inspectionId ? i.id === r.inspectionId : i.type.toLowerCase() === r.type.toLowerCase()));
     if (!ins) throw new Error(`No ${r.type} inspection is open to request on ${r.permitId}.`);
     return {
       action: "schedule_inspection",

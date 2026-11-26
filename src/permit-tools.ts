@@ -46,9 +46,9 @@ export const registerPermits = (server: McpServer, opts: { writes: boolean; conn
   }, ({ city, refresh }) => run(() => svc.listInspections(city, { refresh, wait: true }))());
   server.registerTool("propose_inspection", {
     description: "Book an inspection, step 1 (dry run). Fills the city's request form with the site contact from the company profile, then stops before Save. Nothing is sent. Show the user the preview." + (opts.writes ? " Returns a token for commit_action." : " Booking itself is not turned on here yet."),
-    inputSchema: { city: z.string(), permitId: z.string(), type: z.string().describe("Inspection type, e.g. Framing"), date: z.string().describe("YYYY-MM-DD, a weekday after today") },
-  }, ({ city, permitId, type, date }) => run(async () => {
-    const r = await svc.proposeInspection(city, { permitId, type, date });
+    inputSchema: { city: z.string(), permitId: z.string(), type: z.string().describe("Inspection type, e.g. Framing"), inspectionId: z.string().max(40).optional().describe("Inspection number from list_inspections, e.g. INS-00985207, when known"), date: z.string().describe("YYYY-MM-DD, a weekday after today") },
+  }, ({ city, permitId, type, inspectionId, date }) => run(async () => {
+    const r = await svc.proposeInspection(city, { permitId, type, inspectionId, date });
     return opts.writes ? r : { dryRun: true, summary: r.summary, preview: r.preview, note: "Dry run only. Nothing was sent to the city." };
   })());
   if (!opts.writes) return;

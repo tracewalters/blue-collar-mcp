@@ -66,6 +66,13 @@ test('booking dry run in the hosted server: fills the form from the Company prof
     await refused({ date: iso(new Date()) }, /not after today/);
     await refused({ permitId: 'ELE-2026-0388', type: 'Rough Electrical', date: iso(day) }, /already scheduled/);
     await refused({ type: 'Roof Nail', date: iso(day) }, /No Roof Nail inspection/);
+
+    // With the inspection number, the check is by number, not by type name.
+    await refused({ permitId: 'ELE-2026-0388', type: 'Rough Electrical', inspectionId: 'INS-4', date: iso(day) }, /INS-4.*already scheduled/);
+    await refused({ inspectionId: 'INS-9', date: iso(day) }, /No inspection INS-9 on BLD-2026-0142/);
+    const byId = await call('propose_inspection', { city: 'demo-city', permitId: 'BLD-2026-0142', type: 'Framing', inspectionId: 'INS-1', date: iso(day) });
+    assert.ok(!byId.isError, byId.content[0].text);
+    assert.equal(JSON.parse(byId.content[0].text).preview.Inspection, 'INS-1 Framing');
   } finally {
     await c.close().catch(() => {});
     proc.kill();

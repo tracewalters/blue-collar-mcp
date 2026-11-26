@@ -177,18 +177,24 @@ const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
  * Step 1 of booking, for every city. The booking rules live here so each adapter, the demo city included, gets them:
  * no weekends, no past dates, no inspection that is already scheduled. The site contact comes from the Company profile.
  */
-export async function proposeInspection(jurisdictionId: string, req: { permitId: string; type: string; date: string }) {
+export async function proposeInspection(jurisdictionId: string, req: { permitId: string; type: string; inspectionId?: string; date: string }) {
   const { date } = req;
+  const city = getJurisdiction(jurisdictionId);
+  if (!getAdapter(city.platform).bookingVerified) throw new Error(`Booking for ${city.name} is being tested; not available yet.`);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) !== date) throw new Error(`Invalid date "${date}". Use a real date as YYYY-MM-DD.`);
   const day = new Date(`${date}T12:00:00Z`).getUTCDay();
   if (day === 0 || day === 6) throw new Error(`${portalDate(date)} is a ${DAYS[day]}. Cities inspect on weekdays only.`);
   if (date <= cityToday()) throw new Error(`${portalDate(date)} is not after today. Pick a future weekday.`);
   const { j, a, s } = ctx(jurisdictionId);
-  const same = (await a.listInspections(j, s, req.permitId)).find((i) => i.status === "scheduled" && i.type.toLowerCase() === req.type.trim().toLowerCase());
-  if (same) throw new Error(`${same.type} is already scheduled on ${req.permitId}${same.scheduledFor ? ` for ${portalDate(same.scheduledFor)}` : ""}.`);
+  const rows = await a.listInspections(j, s, req.permitId);
+  const insId = req.inspectionId?.trim();
+  // By inspection number when we have it; otherwise any scheduled inspection of that type counts.
+  if (insId && !rows.some((i) => i.id === insId)) throw new Error(`No inspection ${insId} on ${req.permitId}.`);
+  const same = rows.find((i) => i.status === "scheduled" && (insId ? i.id === insId : i.type.toLowerCase() === req.type.trim().toLowerCase()));
+  if (same) throw new Error(`${same.type} (${same.id}) is already scheduled on ${req.permitId}${same.scheduledFor ? ` for ${portalDate(same.scheduledFor)}` : ""}.`);
   const p = getProfile();
   const contact = { name: p?.userName ?? "", phone: p?.phone || undefined, email: p?.email || undefined };
-  const plan = await a.proposeInspection(j, s, { ...req, type: req.type.trim(), contact });
+  const plan = await a.proposeInspection(j, s, { ...req, type: req.type.trim(), inspectionId: insId || undefined, contact });
   const token = randomBytes(16).toString("hex");
   const db = readDb();
   for (const [k, v] of Object.entries(db.plans)) if (v.expires < Date.now()) delete db.plans[k];
