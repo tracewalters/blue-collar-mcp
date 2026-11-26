@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Permit } from "./schemas.ts";
+import { editJson, readJson } from "./store.ts";
 import { home } from "./vault.ts";
 
 /**
@@ -30,8 +30,10 @@ const jobId = (key: string) => createHash("sha256").update(key).digest("hex").sl
 
 type Store = { names: Record<string, string>; merged: Record<string, string> };
 const file = () => join(home(), "jobs.json");
-const read = (): Store => (existsSync(file()) ? JSON.parse(readFileSync(file(), "utf8")) : { names: {}, merged: {} });
-const write = (s: Store) => writeFileSync(file(), JSON.stringify(s, null, 2), { mode: 0o600 });
+const empty = (): Store => ({ names: {}, merged: {} });
+const read = () => readJson(file(), empty());
+/** Renames and merges are atomic and one at a time per Company. */
+const edit = (fn: (s: Store) => void) => editJson(file(), empty(), fn);
 const root = (s: Store, id: string) => { const seen = new Set<string>(); while (s.merged[id] && !seen.has(id)) { seen.add(id); id = s.merged[id]; } return id; };
 
 export type JobPermit = Pick<Permit, "id" | "jurisdiction" | "type" | "status" | "address">;
@@ -60,18 +62,16 @@ const known = (ids: string[], id: string) => { if (!ids.includes(id)) throw new 
 
 export const renameJob = (current: string[], id: string, name: string) => {
   known(current, id);
-  const s = read();
-  if (name.trim()) s.names[id] = name.trim(); else delete s.names[id];
-  write(s);
+  return edit((s) => { if (name.trim()) s.names[id] = name.trim(); else delete s.names[id]; });
 };
 
 /** Folds job `from` into job `into`. Its permits, and any future permit at its address, show under `into`. */
 export const mergeJobs = (current: string[], from: string, into: string) => {
   known(current, from); known(current, into);
   if (from === into) throw new Error("Pick two different jobs to merge.");
-  const s = read();
-  s.merged[from] = into;
-  for (const [k, v] of Object.entries(s.merged)) if (v === from) s.merged[k] = into;
-  delete s.names[from];
-  write(s);
+  return edit((s) => {
+    s.merged[from] = into;
+    for (const [k, v] of Object.entries(s.merged)) if (v === from) s.merged[k] = into;
+    delete s.names[from];
+  });
 };

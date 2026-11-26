@@ -135,7 +135,7 @@ const api = async (req: IncomingMessage, res: ServerResponse, path: string) => {
         const r = await svc.login(b.city, { username: b.username, password: b.password });
         return json(res, r.ok ? 200 : 400, r.ok ? { ok: true, key: svc.issueConnectKey(b.city) } : { ok: false, message: (r as { message?: string }).message ?? "Login failed." });
       }
-      if (path === "/disconnect" && req.method === "POST") { svc.logout(z.object({ city: z.string() }).parse(await body(req)).city); return json(res, 200, { ok: true }); }
+      if (path === "/disconnect" && req.method === "POST") { await svc.logout(z.object({ city: z.string() }).parse(await body(req)).city); return json(res, 200, { ok: true }); }
       if (path === "/signout" && req.method === "POST") { res.setHeader("set-cookie", "bc_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax"); return json(res, 200, { ok: true }); }
       json(res, 404, { error: "Not found" });
     } catch (e) { json(res, 400, { error: (e as Error).message }); }

@@ -1,5 +1,4 @@
 import { createHash, randomBytes } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import "./adapters/index.ts";
 import { getAdapter, portalDate, type Credentials } from "./adapter.ts";
@@ -7,7 +6,7 @@ import { getJurisdiction } from "./jurisdictions.ts";
 import { getProfile } from "./profile.ts";
 import { groupJobs, mergeJobs, renameJob } from "./jobs.ts";
 import { Plan } from "./schemas.ts";
-import { loadSecret, readDb, removeConnection, saveConnection, writeDb } from "./store.ts";
+import { editJson, loadSecret, readDb, readJson, removeConnection, saveConnection, writeDb } from "./store.ts";
 import { home, open, seal } from "./vault.ts";
 
 // The one place that does real work. The CLI and the MCP server both call these.
@@ -17,11 +16,11 @@ const PLAN_TTL_MS = 10 * 60 * 1000;
 export async function login(jurisdictionId: string, creds: Credentials) {
   const j = getJurisdiction(jurisdictionId);
   const r = await getAdapter(j.platform).login(j, creds);
-  if (r.ok) { saveConnection(j.id, r.session, creds); forget(j.id); }
+  if (r.ok) { saveConnection(j.id, r.session, creds); await forget(j.id); }
   return r.ok ? { ok: true as const } : r;
 }
 
-export const logout = (jurisdictionId: string) => { removeConnection(jurisdictionId); forget(getJurisdiction(jurisdictionId).id); };
+export const logout = async (jurisdictionId: string) => { removeConnection(jurisdictionId); await forget(getJurisdiction(jurisdictionId).id); };
 
 export const listConnections = () =>
   readDb().connections.map((c) => {
@@ -59,75 +58,91 @@ const ctx = (jurisdictionId: string) => {
 };
 
 // ---- Refresh rule (ADR 0002). Data older than BCMCP_STALE_MS (about 15 min) refreshes when someone looks.
-// Cached data is served at once and refreshed in the background, so a slow Portal never blocks Claude.
-// Only an empty cache waits. `refresh` forces a read and waits up to BCMCP_REFRESH_WAIT_MS for it. No polling.
-// The cache is a file per Company, so it survives a restart.
+// The dashboard gets cached data at once and the refresh runs in the background. Claude (`wait`) waits for
+// the fresh read, up to BCMCP_REFRESH_WAIT_MS, and gets the cached data marked stale only if the read fails or
+// times out. An empty cache always waits. `refresh` forces a read and waits the same way. No polling.
+// The cache is a file per Company, so it survives a restart. Writes are atomic and one at a time.
 type Entry = { data: unknown; fetchedAt: string; error?: string };
+export type ReadOpts = { refresh?: boolean; wait?: boolean };
 const staleMs = () => Number(process.env.BCMCP_STALE_MS ?? 15 * 60_000);
 const waitMs = () => Number(process.env.BCMCP_REFRESH_WAIT_MS ?? 40_000);
+// Stored in cache.json and shown to users. Never the raw error: it can carry portal URLs.
+const REFRESH_FAILED = "Could not reach the city portal. Showing the last data we have.";
 const cacheFile = () => join(home(), "cache.json");
-const readCache = (): Record<string, Entry> => { try { return JSON.parse(readFileSync(cacheFile(), "utf8")); } catch { return {}; } };
-const editCache = (fn: (c: Record<string, Entry>) => void) => { const c = readCache(); fn(c); writeFileSync(cacheFile(), JSON.stringify(c), { mode: 0o600 }); };
+const readCache = () => readJson<Record<string, Entry>>(cacheFile(), {});
+const editCache = (fn: (c: Record<string, Entry>) => void) => editJson<Record<string, Entry>>(cacheFile(), {}, fn);
 const inflight = new Map<string, Promise<unknown>>();
 const connected = (city: string) => readDb().connections.some((c) => c.jurisdictionId === city);
 
 /** Drops a city's cached data, e.g. after a connect, disconnect or booking. */
 export const forget = (city: string, kind?: string) => editCache((c) => { for (const k of Object.keys(c)) if (k.startsWith(`${city}|${kind ?? ""}`)) delete c[k]; });
 
-async function fresh<T>(city: string, kind: string, read: () => Promise<T>, force = false) {
+async function fresh<T>(city: string, kind: string, read: () => Promise<T>, o: ReadOpts = {}) {
   const key = `${city}|${kind}`, id = `${home()}|${key}`;
   const hit = readCache()[key];
-  if ((force || !hit || Date.now() - Date.parse(hit.fetchedAt) >= staleMs()) && !inflight.has(id)) {
+  const old = !hit || Date.now() - Date.parse(hit.fetchedAt) >= staleMs();
+  if ((o.refresh || old) && !inflight.has(id)) {
     const p = read()
-      .then((data) => { if (connected(city)) editCache((c) => { c[key] = { data, fetchedAt: new Date().toISOString() }; }); })
+      .then(async (data) => { if (connected(city)) await editCache((c) => { c[key] = { data, fetchedAt: new Date().toISOString() }; }); })
+      .catch(async (e) => {
+        console.error(`refresh failed (${kind}): ${(e as Error).message}`);
+        if (connected(city)) await editCache((c) => { if (c[key]) c[key].error = REFRESH_FAILED; });
+        throw e;
+      })
       .finally(() => inflight.delete(id));
-    p.catch((e) => { if (connected(city)) editCache((c) => { if (c[key]) c[key].error = (e as Error).message; }); });
+    p.catch(() => {});
     inflight.set(id, p);
   }
+  let failed = false;
   if (!hit) await inflight.get(id);
-  else if (force) await Promise.race([inflight.get(id)?.catch(() => {}), new Promise((r) => setTimeout(r, waitMs()).unref())]);
-  const e = readCache()[key] ?? hit!;
-  return { data: e.data as T, fetchedAt: e.fetchedAt, refreshing: inflight.has(id), error: e.error };
+  else if (o.refresh || (o.wait && old)) {
+    const done = inflight.get(id)?.then(() => true, () => false) ?? Promise.resolve(true);
+    failed = !(await Promise.race([done, new Promise<boolean>((r) => setTimeout(r, waitMs(), false).unref())]));
+  }
+  const e = readCache()[key];
+  if (!e) throw new Error(`No ${kind} for ${city}: it is not connected any more. Check list_connections.`);
+  return { data: e.data as T, fetchedAt: e.fetchedAt, refreshing: inflight.has(id), error: e.error ?? (failed ? REFRESH_FAILED : undefined), stale: failed && old };
 }
 
 /** Joins per-city results: oldest fetch time, refreshing if any city is. */
-const freshness = (parts: { fetchedAt: string; refreshing: boolean; error?: string }[]) => {
+const freshness = (parts: { fetchedAt: string; refreshing: boolean; error?: string; stale?: boolean }[]) => {
   const fetchedAt: string | null = parts.map((p) => p.fetchedAt).sort()[0] ?? null;
   const errors = parts.map((p) => p.error).filter(Boolean);
   return {
     fetchedAt, ageMinutes: fetchedAt ? Math.floor((Date.now() - Date.parse(fetchedAt)) / 60_000) : null,
-    refreshing: parts.some((p) => p.refreshing), ...(errors.length ? { refreshError: errors.join(" ") } : {}),
+    refreshing: parts.some((p) => p.refreshing), ...(errors.length ? { refreshError: [...new Set(errors)].join(" ") } : {}),
+    ...(parts.some((p) => p.stale) ? { stale: true } : {}),
   };
 };
 
-const cityPermits = (id: string, force?: boolean) => { const { j, a, s } = ctx(id); return fresh(id, "permits", () => a.listPermits(j, s), force); };
-const cityInspections = (id: string, force?: boolean) => {
+const cityPermits = (id: string, o?: ReadOpts) => { const { j, a, s } = ctx(id); return fresh(id, "permits", () => a.listPermits(j, s), o); };
+const cityInspections = (id: string, o?: ReadOpts) => {
   const { j, a, s } = ctx(id);
-  return fresh(id, "inspections", async () => (await a.listInspections(j, s)).map((i) => ({ ...i, jurisdiction: j.id })), force);
+  return fresh(id, "inspections", async () => (await a.listInspections(j, s)).map((i) => ({ ...i, jurisdiction: j.id })), o);
 };
 const cities = (jurisdictionId?: string) => (jurisdictionId ? [getJurisdiction(jurisdictionId).id] : listConnections().map((c) => c.id));
 
 /** Reads fan out to every connected city unless one is named. */
-export async function listPermits(jurisdictionId?: string, opts: { refresh?: boolean } = {}) {
-  const parts = await Promise.all(cities(jurisdictionId).map((id) => cityPermits(id, opts.refresh)));
+export async function listPermits(jurisdictionId?: string, opts: ReadOpts = {}) {
+  const parts = await Promise.all(cities(jurisdictionId).map((id) => cityPermits(id, opts)));
   return { permits: parts.flatMap((p) => p.data), ...freshness(parts) };
 }
 
 /** Permits grouped into Jobs by site address, with the Company's renames and merges applied. */
-export const listJobs = async () => groupJobs((await listPermits()).permits);
+export const listJobs = async (opts: ReadOpts = {}) => groupJobs((await listPermits(undefined, opts)).permits);
 const jobIds = async () => (await listJobs()).jobs.map((j) => j.id);
-export const renameJobTo = async (job: string, name: string) => { renameJob(await jobIds(), job, name); return listJobs(); };
-export const mergeJob = async (from: string, into: string) => { mergeJobs(await jobIds(), from, into); return listJobs(); };
+export const renameJobTo = async (job: string, name: string) => { await renameJob(await jobIds(), job, name); return listJobs(); };
+export const mergeJob = async (from: string, into: string) => { await mergeJobs(await jobIds(), from, into); return listJobs(); };
 
-export async function listInspections(jurisdictionId?: string, opts: { refresh?: boolean } = {}) {
-  const parts = await Promise.all(cities(jurisdictionId).map((id) => cityInspections(id, opts.refresh)));
+export async function listInspections(jurisdictionId?: string, opts: ReadOpts = {}) {
+  const parts = await Promise.all(cities(jurisdictionId).map((id) => cityInspections(id, opts)));
   return { inspections: parts.flatMap((p) => p.data), ...freshness(parts) };
 }
 
 /** One permit and its inspections, from the same cached city data as the lists. */
-export async function getPermit(jurisdictionId: string, permitId: string, opts: { refresh?: boolean } = {}) {
+export async function getPermit(jurisdictionId: string, permitId: string, opts: ReadOpts = {}) {
   const j = getJurisdiction(jurisdictionId);
-  const [p, i] = await Promise.all([cityPermits(j.id, opts.refresh), cityInspections(j.id, opts.refresh)]);
+  const [p, i] = await Promise.all([cityPermits(j.id, opts), cityInspections(j.id, opts)]);
   const permit = p.data.find((x) => x.id.toLowerCase() === permitId.toLowerCase());
   if (!permit) throw new Error(`Permit ${permitId} not found in ${j.name}`);
   return { permit, inspections: i.data.filter((x) => x.permitId === permit.id), ...freshness([p, i]) };
@@ -184,7 +199,7 @@ export async function commit(token: string) {
   const parsed = Plan.parse(plan);
   const { j, a, s } = ctx(parsed.connectionId);
   const r = await a.commit(j, s, parsed);
-  forget(j.id, "inspections");
+  await forget(j.id, "inspections");
   return r;
 }
 
