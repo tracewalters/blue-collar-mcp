@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
+const NEXT = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() + 3); while (d.getUTCDay() % 6 === 0) d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })(); // a weekday after today
 process.env.PERMIT_MCP_HOME = mkdtempSync(join(tmpdir(), "audit-"));
 const home = process.env.PERMIT_MCP_HOME;
 const brain = await import("../src/brain/notes.ts");
@@ -23,10 +24,10 @@ test("different titles with the same slug do not overwrite each other", () => {
 test("demo booking survives a new process (persisted)", async () => {
   await svc.login("demo-city", { username: "demo", password: "demo" });
   const before = (await svc.listInspections()).inspections.length;
-  const { token } = await svc.proposeInspection("demo-city", { permitId: "BLD-2026-0142", type: "Final", date: "2026-12-05" });
+  const { token } = await svc.proposeInspection("demo-city", { permitId: "BLD-2026-0142", type: "Framing", date: NEXT });
   await svc.commit(token);
   const { readFileSync } = await import("node:fs");
-  assert.match(readFileSync(join(home, "demo-booked.json"), "utf8"), /Final/);
+  assert.match(readFileSync(join(home, "demo-booked.json"), "utf8"), /Framing/);
   assert.equal((await svc.listInspections()).inspections.length, before + 1);
 });
 

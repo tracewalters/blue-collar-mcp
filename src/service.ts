@@ -2,8 +2,9 @@ import { createHash, randomBytes } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import "./adapters/index.ts";
-import { getAdapter, type Credentials } from "./adapter.ts";
+import { getAdapter, portalDate, type Credentials } from "./adapter.ts";
 import { getJurisdiction } from "./jurisdictions.ts";
+import { getProfile } from "./profile.ts";
 import { Plan } from "./schemas.ts";
 import { loadSecret, readDb, removeConnection, saveConnection, writeDb } from "./store.ts";
 import { home, open, seal } from "./vault.ts";
@@ -127,16 +128,32 @@ export async function getPermit(jurisdictionId: string, permitId: string, opts: 
 
 const bind = (plan: unknown, token: string) => createHash("sha256").update(JSON.stringify(plan) + token).digest("hex");
 
+// Today's date where the cities are. All supported cities are Phoenix metro (no daylight saving).
+const cityToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Phoenix" });
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+/**
+ * Step 1 of booking, for every city. The booking rules live here so each adapter, the demo city included, gets them:
+ * no weekends, no past dates, no inspection that is already scheduled. The site contact comes from the Company profile.
+ */
 export async function proposeInspection(jurisdictionId: string, req: { permitId: string; type: string; date: string }) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(req.date) || new Date(`${req.date}T00:00:00Z`).toISOString().slice(0, 10) !== req.date) throw new Error(`Invalid date "${req.date}". Use a real date as YYYY-MM-DD.`);
+  const { date } = req;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) !== date) throw new Error(`Invalid date "${date}". Use a real date as YYYY-MM-DD.`);
+  const day = new Date(`${date}T12:00:00Z`).getUTCDay();
+  if (day === 0 || day === 6) throw new Error(`${portalDate(date)} is a ${DAYS[day]}. Cities inspect on weekdays only.`);
+  if (date <= cityToday()) throw new Error(`${portalDate(date)} is not after today. Pick a future weekday.`);
   const { j, a, s } = ctx(jurisdictionId);
-  const plan = await a.proposeInspection(j, s, req);
+  const same = (await a.listInspections(j, s, req.permitId)).find((i) => i.status === "scheduled" && i.type.toLowerCase() === req.type.trim().toLowerCase());
+  if (same) throw new Error(`${same.type} is already scheduled on ${req.permitId}${same.scheduledFor ? ` for ${portalDate(same.scheduledFor)}` : ""}.`);
+  const p = getProfile();
+  const contact = { name: p?.userName ?? "", phone: p?.phone || undefined, email: p?.email || undefined };
+  const plan = await a.proposeInspection(j, s, { ...req, type: req.type.trim(), contact });
   const token = randomBytes(16).toString("hex");
   const db = readDb();
   for (const [k, v] of Object.entries(db.plans)) if (v.expires < Date.now()) delete db.plans[k];
   db.plans[token] = { sealed: seal({ plan, bind: bind(plan, token) }), expires: Date.now() + PLAN_TTL_MS };
   writeDb(db);
-  return { token, summary: plan.summary, expiresInMinutes: PLAN_TTL_MS / 60000 };
+  return { token, summary: plan.summary, preview: plan.preview, expiresInMinutes: PLAN_TTL_MS / 60000 };
 }
 
 /** Single use. Expires. Executes exactly what was proposed. */

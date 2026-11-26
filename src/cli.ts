@@ -88,7 +88,8 @@ async function main() {
       const type = flag("type"), date = flag("date");
       if (!type || !date) throw new Error("--type and --date are required");
       const r = await svc.proposeInspection(a, { permitId: b, type, date });
-      return out(r, `${r.summary}\nTo execute: permit commit ${r.token}   (expires in ${r.expiresInMinutes} min)`);
+      const form = Object.entries(r.preview ?? {}).map(([k, v]) => `  ${k}: ${v}`).join("\n");
+      return out(r, `${r.summary}\n${form ? form + "\n" : ""}To execute: permit commit ${r.token}   (expires in ${r.expiresInMinutes} min)`);
     }
     case "commit": { const r = await svc.commit(a); return out(r, r.message); }
     default: console.log(help);

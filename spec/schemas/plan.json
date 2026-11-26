@@ -20,6 +20,15 @@
         "type": "string"
       },
       "additionalProperties": {}
+    },
+    "preview": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "string"
+      }
     }
   },
   "required": [

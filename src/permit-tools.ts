@@ -15,7 +15,7 @@ const city = z.string().optional().describe("Jurisdiction id. Omit for all conne
 const refresh = z.boolean().optional().describe("Read the city portal now. Only when the user asks for the latest; data older than 15 minutes refreshes on its own.");
 const FRESH = " Results carry fetchedAt and ageMinutes: say how fresh the data is in a few words. If refreshing is true, newer data is on its way; say so.";
 
-/** Permit tools. writes=true adds scheduling (local stdio only: needs a prompt the user can approve). */
+/** Permit tools. Booking dry runs are always on. writes=true adds commit_action (local stdio only: needs a prompt the user can approve). */
 export const registerPermits = (server: McpServer, opts: { writes: boolean; connectHint: string }) => {
   server.registerTool("list_connections", {
     description: `Cities the user has logged into, and pending ones they chose but have not signed in to yet. If empty, ${opts.connectHint} After the user signs in on the connect page, call this to check; no paste needed. Only if they paste a connection key (like ABCD-1234), pass it as key. Never ask for passwords in chat.`,
@@ -45,12 +45,15 @@ export const registerPermits = (server: McpServer, opts: { writes: boolean; conn
     description: "Inspections across connected cities: needed, scheduled, passed, failed." + FRESH,
     inputSchema: { city, refresh }, annotations: readOnly,
   }, ({ city, refresh }) => run(() => svc.listInspections(city, { refresh }))());
-  if (!opts.writes) return;
   server.registerTool("propose_inspection", {
-    description: "Step 1 of scheduling an inspection. Changes nothing. Returns a token for commit_action.",
-    inputSchema: { city: z.string(), permitId: z.string(), type: z.string(), date: z.string().describe("YYYY-MM-DD") },
-  }, ({ city, permitId, type, date }) => run(() => svc.proposeInspection(city, { permitId, type, date }))());
-  
+    description: "Book an inspection, step 1 (dry run). Fills the city's request form with the site contact from the company profile, then stops before Save. Nothing is sent. Show the user the preview." + (opts.writes ? " Returns a token for commit_action." : " Booking itself is not turned on here yet."),
+    inputSchema: { city: z.string(), permitId: z.string(), type: z.string().describe("Inspection type, e.g. Framing"), date: z.string().describe("YYYY-MM-DD, a weekday after today") },
+  }, ({ city, permitId, type, date }) => run(async () => {
+    const r = await svc.proposeInspection(city, { permitId, type, date });
+    return opts.writes ? r : { dryRun: true, summary: r.summary, preview: r.preview, note: "Dry run only. Nothing was sent to the city." };
+  })());
+  if (!opts.writes) return;
+
   server.registerTool("commit_action", {
     description: "Step 2. Executes a proposed action after the user confirms in a prompt. Single use.",
     inputSchema: { token: z.string() },
