@@ -5,8 +5,8 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 process.env.PERMIT_MCP_HOME = mkdtempSync(join(tmpdir(), "ingest-"));
-const ing = await import("../src/ingest.ts");
-const brain = await import("../src/brain.ts");
+const ing = await import("../src/brain/ingest.ts");
+const brain = await import("../src/brain/notes.ts");
 
 const items = [
   { id: "1", source: "gmail", date: "2026-10-01", from: "Jane <jane@x.com>", subject: "Pool quote", body: "Call me at (602) 555-0101. Job is at 12 Oak St.\n\nOn Mon, Jane wrote:\n> old text 480-555-9999" },

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { brainDir, saveNote } from "./brain.ts";
+import { brainDir, saveNote } from "./notes.ts";
 
 /**
  * Ingest v0: cheap deterministic pipeline. No model calls.

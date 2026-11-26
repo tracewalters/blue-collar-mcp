@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { gate } from "./approval.ts";
-import * as brain from "./brain.ts";
+import * as brain from "./notes.ts";
 
 const reply = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] });
 const run = (fn: () => Promise<unknown> | unknown) => async () => {

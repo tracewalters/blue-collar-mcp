@@ -1,7 +1,7 @@
 {
-  "name": "permit-mcp",
+  "name": "blue-collar-mcp",
   "version": "0.1.0",
-  "description": "One MCP and CLI for every permit portal. Log in once, then read and act on permits from Claude.",
+  "description": "Permits for residential contractors, inside Claude. One MCP and dashboard for every city portal.",
   "license": "MIT",
   "type": "module",
   "repository": "github:tracewalters/blue-collar-mcp",

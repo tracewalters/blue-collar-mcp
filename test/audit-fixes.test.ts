@@ -6,9 +6,9 @@ import { test } from "node:test";
 
 process.env.PERMIT_MCP_HOME = mkdtempSync(join(tmpdir(), "audit-"));
 const home = process.env.PERMIT_MCP_HOME;
-const brain = await import("../src/brain.ts");
+const brain = await import("../src/brain/notes.ts");
 const svc = await import("../src/service.ts");
-const approval = await import("../src/approval.ts");
+const approval = await import("../src/brain/approval.ts");
 const srv = await import("../src/server.ts");
 
 test("different titles with the same slug do not overwrite each other", () => {

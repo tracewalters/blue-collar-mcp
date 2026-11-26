@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 process.env.PERMIT_MCP_HOME = mkdtempSync(join(tmpdir(), "hosted-"));
-const { tenantDir, saveNote, searchNotes } = await import("../src/brain.ts");
+const { tenantDir, saveNote, searchNotes } = await import("../src/brain/notes.ts");
 const { createTenant } = await import("../src/server.ts");
 
 test("tenants are isolated", () => {
