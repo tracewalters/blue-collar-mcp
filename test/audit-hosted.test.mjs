@@ -32,21 +32,9 @@ test('built hosted MCP initializes, lists brain tools, and restricts access to p
       const client = new Client({ name:'audit', version:'1.0.0' });
       try {
         await client.connect(new StreamableHTTPClientTransport(new URL(endpoint)));
-        assert.deepEqual((await client.listTools()).tools.map(t => t.name).sort(), ['brain_configure', 'brain_get', 'brain_save', 'brain_search', 'brain_status', 'ingest_confirm', 'ingest_review', 'ingest_run']);
-        const result = await client.callTool({ name:'brain_search', arguments: {query:'fixture'} });
-        assert.deepEqual(JSON.parse(result.content[0].text), []);
-        const status = JSON.parse((await client.callTool({ name:'brain_status', arguments:{} })).content[0].text);
-        assert.equal(status.setup, false);
-        assert.match(status.downloadAll, /export\.tar\.gz$/);
-        assert.equal(JSON.parse((await client.callTool({ name:'brain_configure', arguments:{storage:'hosted'} })).content[0].text).saved, 'hosted');
-        const dl = await fetch(endpoint.replace(/mcp$/, 'export.tar.gz'));
-        assert.equal(dl.status, 200);
-        const missing = await client.callTool({ name:'brain_get', arguments: {type:'job',slug:'missing'} });
-        assert.equal(missing.isError, true);
-        const draft = await client.callTool({ name:'brain_save', arguments: {type:'job',title:'Fixture',body:'Unsigned'} });
-        assert.equal(JSON.parse(draft.content[0].text).needsApproval, true, 'first call only previews');
-        const still = await client.callTool({ name:'brain_get', arguments: {type:'job',slug:'fixture'} });
-        assert.equal(still.isError, true, 'nothing saved without the token');
+        assert.deepEqual((await client.listTools()).tools.map(t => t.name).sort(), ['get_permit', 'list_connections', 'list_inspections', 'list_permits', 'open_dashboard']);
+        assert.equal(JSON.parse((await client.callTool({ name:'list_connections', arguments:{} })).content[0].text).connections.length, 0);
+        assert.match((await client.callTool({ name:'open_dashboard', arguments:{} })).content[0].text, /\/auth\/claim\?t=/);
       } finally {
         await client.close();
       }

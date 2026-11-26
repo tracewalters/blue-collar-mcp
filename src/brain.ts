@@ -2,7 +2,8 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
-import { home } from "./vault.ts";
+import { home, tenantDir } from "./vault.ts";
+export { tenantDir };
 
 /** Company brain, v0: plain markdown files with frontmatter. Opens in Obsidian as-is. */
 export const NoteType = z.enum(["client", "job", "meeting", "decision", "person", "company", "knowledge", "rule", "payment"]);
@@ -16,7 +17,6 @@ const STALE_DAYS = 90;
 const LIVE: NoteType[] = ["client", "job", "meeting"];
 
 /** Hosted mode runs each request inside a tenant, so every company gets its own brain folder. */
-export const tenantDir = new AsyncLocalStorage<string>();
 export const brainDir = () => tenantDir.getStore() ?? join(process.env.BRAIN_DIR ?? home(), "brain");
 export const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
 const file = (type: NoteType, slug: string) => join(brainDir(), type, `${slugify(slug)}.md`);
@@ -81,7 +81,7 @@ export const searchNotes = (query: string, type?: NoteType, limit = 10) => {
 };
 
 /** Per-request info (hosted): where the owner can download their brain. */
-export const requestInfo = new AsyncLocalStorage<{ exportUrl?: string; company?: string }>();
+export const requestInfo = new AsyncLocalStorage<{ exportUrl?: string; company?: string; tenant?: string; dashboardBase?: string }>();
 const configFile = () => join(brainDir(), "..", "config.json");
 export type BrainConfig = { storage?: "hosted" | "obsidian" | "drive" | "notion"; chosenAt?: string };
 export const getConfig = (): BrainConfig => { try { return JSON.parse(readFileSync(configFile(), "utf8")); } catch { return {}; } };
