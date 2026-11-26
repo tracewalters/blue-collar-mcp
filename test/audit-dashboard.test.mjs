@@ -15,7 +15,7 @@ test('dashboard: Claude hands out a one-time link, session reads and connects, t
   const { port } = probe.address();
   await new Promise((r) => probe.close(r));
   const host = 'http://127.0.0.1:' + port;
-  const env = { ...process.env, BCMCP_PUBLIC_URL: host, BCMCP_DATA: mkdtempSync(join(tmpdir(), 'bc-dash-')), PORT: String(port) };
+  const env = { ...process.env, BCMCP_PUBLIC_URL: host, BCMCP_DATA: mkdtempSync(join(tmpdir(), 'bc-dash-')), PORT: String(port), BCMCP_CLAIM_GRACE_MS: '0' };
   const mk = (n) => execFileSync(process.execPath, ['src/server.ts', 'tenant', n], { env, encoding: 'utf8' }).trim().split('\n').at(-1);
   const [a, b] = [mk('A'), mk('B')];
   const proc = spawn(process.execPath, ['src/server.ts'], { env, stdio: ['ignore', 'pipe', 'inherit'] });

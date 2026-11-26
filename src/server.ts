@@ -75,7 +75,9 @@ const check = (token: string | undefined, kind: string) => {
   if (want.length !== got.length || !timingSafeEqual(want, got) || Number(p[2]) < Date.now()) return null;
   return { tenant: p[1], nonce: p[3] };
 };
-const used = new Set<string>();
+// A claim link works once, but link previews and double clicks reload it right away, so reuse is allowed for a short grace window.
+const used = new Map<string, number>();
+const GRACE_MS = Number(process.env.BCMCP_CLAIM_GRACE_MS ?? 120_000);
 const SESSION_MS = 30 * 864e5;
 export const dashboardLink = (tenant: string, base: string) => `${base}/auth/claim?t=${mint(tenant, 10 * 60_000, "claim", randomBytes(8).toString("hex"))}`;
 
@@ -118,8 +120,8 @@ const handle = async (req: IncomingMessage, res: ServerResponse) => {
 
   if (url.startsWith("/auth/claim")) {
     const t = check(new URL(url, base).searchParams.get("t") ?? "", "claim");
-    if (!t || used.has(t.nonce) || !tenantByHash(t.tenant)) { res.writeHead(401, { "content-type": "text/plain" }).end("This link expired or was already used. Ask Claude to open your dashboard again."); return; }
-    used.add(t.nonce);
+    if (!t || (used.has(t.nonce) && Date.now() - used.get(t.nonce)! > GRACE_MS) || !tenantByHash(t.tenant)) { res.writeHead(401, { "content-type": "text/plain" }).end("This link expired or was already used. Ask Claude to open your dashboard again."); return; }
+    if (!used.has(t.nonce)) used.set(t.nonce, Date.now());
     res.writeHead(302, { location: "/dashboard", "set-cookie": `bc_session=${mint(t.tenant, SESSION_MS, "sess")}; Path=/; Max-Age=${SESSION_MS / 1000}; HttpOnly; Secure; SameSite=Lax` }).end();
     return;
   }
