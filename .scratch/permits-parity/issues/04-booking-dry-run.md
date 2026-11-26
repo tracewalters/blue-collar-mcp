@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] Weekends, past dates and already-scheduled inspections are refused
-- [ ] Site contact comes from the Company profile
-- [ ] Dry run never saves
+- [x] Weekends, past dates and already-scheduled inspections are refused
+- [x] Site contact comes from the Company profile
+- [x] Dry run never saves (demo city; Shape PHX unverified live, booking refused there until it is)
