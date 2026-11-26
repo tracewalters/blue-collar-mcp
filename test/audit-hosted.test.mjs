@@ -32,7 +32,7 @@ test('built hosted MCP initializes, lists brain tools, and restricts access to p
       const client = new Client({ name:'audit', version:'1.0.0' });
       try {
         await client.connect(new StreamableHTTPClientTransport(new URL(endpoint)));
-        assert.deepEqual((await client.listTools()).tools.map(t => t.name).sort(), ['get_permit', 'list_connections', 'list_inspections', 'list_permits', 'open_dashboard']);
+        assert.deepEqual((await client.listTools()).tools.map(t => t.name).sort(), ['get_permit', 'get_setup', 'list_connections', 'list_inspections', 'list_permits', 'open_dashboard', 'run_setup', 'save_setup']);
         assert.equal(JSON.parse((await client.callTool({ name:'list_connections', arguments:{} })).content[0].text).connections.length, 0);
         assert.match((await client.callTool({ name:'open_dashboard', arguments:{} })).content[0].text, /\/auth\/claim\?t=/);
       } finally {

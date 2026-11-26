@@ -23,7 +23,7 @@ test("bad login is rejected and not saved", async () => {
 });
 
 test("unbuilt platform fails clearly", async () => {
-  const r = await svc.login("phoenix-az", { username: "x", password: "y" });
+  const r = await svc.login("scottsdale-az", { username: "x", password: "y" });
   assert.equal(r.ok, false);
 });
 
