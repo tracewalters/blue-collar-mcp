@@ -13,6 +13,7 @@ export const planned = (platform: string): PortalAdapter => ({
   listPermits: nope(platform),
   getPermit: nope(platform),
   listInspections: nope(platform),
+  getInspection: nope(platform),
   proposeInspection: nope(platform),
   commit: nope(platform),
 });

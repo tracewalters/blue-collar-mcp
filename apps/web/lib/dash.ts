@@ -9,7 +9,7 @@ export interface Permit {
 }
 export type InspStatus = "needed" | "scheduled" | "completed" | "passed" | "failed" | "cancelled";
 export interface Inspection {
-  id: string; permitId: string; type: string; status: InspStatus; scheduledFor?: string; notes?: string; jurisdiction?: string;
+  id: string; permitId: string; type: string; status: InspStatus; scheduledFor?: string; notes?: string; comments?: string; jurisdiction?: string;
 }
 export interface City { id: string; name: string; state: string; platform: string; maturity: "ready" | "demo" | "planned" }
 export interface Connection { id: string; name: string; platform: string; connectedAt: string }

@@ -124,6 +124,7 @@ const api = async (req: IncomingMessage, res: ServerResponse, path: string) => {
       const refresh = q.get("refresh") === "1";
       if (path === "/permits") return json(res, 200, await svc.listPermits(q.get("city") ?? undefined, { refresh }));
       if (path === "/inspections") return json(res, 200, await svc.listInspections(q.get("city") ?? undefined, { refresh }));
+      if (path === "/inspection") return json(res, 200, await svc.getInspection(q.get("city")!, q.get("permit")!, q.get("id")!));
       if (path === "/permit") return json(res, 200, await svc.getPermit(q.get("city")!, q.get("id")!, { refresh }));
       if (path === "/connect" && req.method === "POST") {
         if (tooMany(tenant.id)) return json(res, 429, { error: "Too many tries. Wait a minute." });

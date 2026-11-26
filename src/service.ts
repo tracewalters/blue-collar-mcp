@@ -126,6 +126,14 @@ export async function getPermit(jurisdictionId: string, permitId: string, opts: 
   return { permit, inspections: i.data.filter((x) => x.permitId === permit.id), ...freshness([p, i]) };
 }
 
+/** One inspection with the inspector's comments. */
+export async function getInspection(jurisdictionId: string, permitId: string, inspectionId: string) {
+  const { j, a, s } = ctx(jurisdictionId);
+  const i = await a.getInspection(j, s, permitId, inspectionId);
+  if (!i || i.permitId.toLowerCase() !== permitId.toLowerCase()) throw new Error(`Inspection ${inspectionId} not found on permit ${permitId} in ${j.name}`);
+  return { ...i, jurisdiction: j.id };
+}
+
 const bind = (plan: unknown, token: string) => createHash("sha256").update(JSON.stringify(plan) + token).digest("hex");
 
 // Today's date where the cities are. All supported cities are Phoenix metro (no daylight saving).

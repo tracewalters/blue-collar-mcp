@@ -31,6 +31,8 @@ export interface PortalAdapter {
   listInspections(j: Jurisdiction, s: Session, permitId?: string): Promise<Inspection[]>;
   /** Dry run: fill the city's form, read it back, stop before Save. The Plan's preview is exactly what would be sent. */
   proposeInspection(j: Jurisdiction, s: Session, req: InspectionRequest): Promise<Plan>;
+  /** One inspection with the inspector's comments. Read on demand, never in the list. */
+  getInspection(j: Jurisdiction, s: Session, permitId: string, inspectionId: string): Promise<Inspection | undefined>;
   commit(j: Jurisdiction, s: Session, plan: Plan): Promise<{ ok: boolean; message: string }>;
 }
 

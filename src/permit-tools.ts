@@ -41,6 +41,11 @@ export const registerPermits = (server: McpServer, opts: { writes: boolean; conn
     inputSchema: { city: z.string(), permitId: z.string(), refresh }, annotations: readOnly,
   }, ({ city, permitId, refresh }) => run(() => svc.getPermit(city, permitId, { refresh }))());
   
+  server.registerTool("get_inspection", {
+    description: "One inspection with the inspector's comments (why it passed or failed). Use when the user asks what the inspector said. Can take up to a minute on real portals.",
+    inputSchema: { city: z.string(), permitId: z.string(), inspectionId: z.string().describe("e.g. INS-00985207") }, annotations: readOnly,
+  }, ({ city, permitId, inspectionId }) => run(() => svc.getInspection(city, permitId, inspectionId))());
+
   server.registerTool("list_inspections", {
     description: "Inspections across connected cities: needed, scheduled, passed, failed." + FRESH,
     inputSchema: { city, refresh }, annotations: readOnly,

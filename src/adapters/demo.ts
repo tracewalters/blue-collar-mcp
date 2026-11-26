@@ -20,6 +20,11 @@ const inspections: Inspection[] = [
   { id: "INS-3", permitId: "ELE-2026-0388", type: "Rough Electrical", status: "failed", scheduledFor: "2026-11-12", notes: "Missing box fill labels" },
   { id: "INS-4", permitId: "ELE-2026-0388", type: "Rough Electrical", status: "scheduled", scheduledFor: "2026-12-03" },
 ];
+// What the inspector wrote. Only getInspection returns it, like a real portal's record page.
+const comments: Record<string, string> = {
+  "INS-2": "Footings and rebar per plan. Approved to pour.",
+  "INS-3": "Missing box fill labels at kitchen and bath circuits. Bond the panel ground. Reinspect after corrections.",
+};
 
 // BCMCP_DEMO_DELAY_MS makes reads slow like a real Portal (tests of the refresh rule).
 const slow = () => new Promise((r) => setTimeout(r, Number(process.env.BCMCP_DEMO_DELAY_MS ?? 0)));
@@ -39,7 +44,10 @@ export const demoAdapter: PortalAdapter = {
     const all = [...inspections, ...booked()];
     return permitId ? all.filter((i) => i.permitId === permitId) : all;
   },
-  // Dry run like Shape PHX: find the open inspection of that type and "fill" the same form fields.
+  async getInspection(j, s, permitId, inspectionId) {
+    const i = (await demoAdapter.listInspections(j, s, permitId)).find((x) => x.id === inspectionId);
+    return i && { ...i, comments: comments[i.id] };
+  },
   async proposeInspection(j, _s, r) {
     const ins = inspections.find((i) => i.permitId === r.permitId && i.status === "needed" && i.type.toLowerCase() === r.type.toLowerCase());
     if (!ins) throw new Error(`No ${r.type} inspection is open to request on ${r.permitId}.`);
