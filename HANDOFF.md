@@ -1,0 +1,67 @@
+# HANDOFF
+
+Read `AGENTS.md`, `VISION.md`, `docs/ARCHITECTURE.md`, `docs/PORTAL_NOTES.md` first. Trace (the owner) wants **very short, plain replies** (2-3 sentences, "tldr"), one feature at a time, and never any secrets in chat.
+
+## What this is
+**Blue Collar MCP**: permits for residential contractors, inside Claude. A hosted MCP server plus a website dashboard. Permits is the only feature right now. Brain, rules, books, CRM and inventory are parked (`docs/ROADMAP.md`).
+
+## State (as of 2026-11-26)
+- Repo: https://github.com/tracewalters/blue-collar-mcp. `main` has everything through PR #15 once merged. 37 tests pass (`npm run typecheck && npm test`).
+- **Works end to end:** onboarding in Claude (`get_setup`, `run_setup` form via MCP elicitation, `save_setup`) -> `open_dashboard` one-time link -> website connect checklist (log in to each city) -> Claude reads permits and inspections -> dashboard shows the same data.
+- **Real portal:** only **Shape PHX (City of Phoenix)** via `src/adapters/shape-phx.ts` (headless Chromium with `playwright-core`, signed in as the user). Tested with Trace's real account: 13 permits, 46 inspections. Demo city (`demo` / `demo`) also works. Other cities in `data/jurisdictions.json` are `tbd` placeholders ("coming soon"); only Scottsdale (Tyler EnerGov) and Avondale (Accela) have a known platform.
+- **Not built:** booking inspections (`proposeInspection` and `commit` in the Shape PHX adapter throw "not enabled"); hosted mode is read-only.
+
+## Code map
+```
+src/server.ts          hosted server: /t/<secret>/mcp, /auth/claim, /api/*; sessions, tenants
+src/service.ts         the one place that does work (CLI, MCP and dashboard all call it)
+src/permit-tools.ts    permit MCP tools;  src/setup-tools.ts  onboarding tools (run_setup form)
+src/profile.ts         company profile + chosen cities (per company)
+src/adapters/          demo, shape-phx (real), planned placeholders
+src/vault.ts           per-company encrypted vault; tenantDir (AsyncLocalStorage) scopes everything
+src/brain/             PARKED notes + ingest (BCMCP_BRAIN=1 turns on)
+apps/web               Next.js site and dashboard (follow TASTE.md)
+test/                  node:test; audit-*.test.mjs spawn the real server
+scripts/sim.ts         no-model simulation of the (parked) ingest pipeline
+```
+Key design rules: one adapter per portal platform, API first, writes two-phase (propose then approved commit), credentials never go through the model, each company has its own folder and vault key, only hashes of connector secrets are stored.
+
+## How hosted mode works
+- Company gets a secret connector URL `https://mcp.waltreno.systems/t/<secret>/mcp` (add in Claude as a custom connector). Create with `node src/server.ts tenant "Name"`; rotate or revoke with `rotate` / `revoke`.
+- `open_dashboard` returns `/auth/claim?t=...&next=...`: signed, 10 minutes, reusable for 2 minutes after first use, then sets a 30-day HttpOnly cookie. Dashboard API (`/api/*`) needs the cookie; POSTs need header `x-bc: 1`.
+- Clients that advertise MCP **elicitation** get a stateful session (so the form answer finds its tool call); all others stay stateless. Don't break the stateless path.
+- Brain tools are off unless `BCMCP_BRAIN=1`.
+
+## Where it runs (Hostinger VPS, user `cloudroom-agent`, no root)
+- Deployed worktree: `/home/cloudroom-agent/bcmcp-run` (detached git checkout; `git fetch && git checkout --detach origin/<branch>`). Data: `/home/cloudroom-agent/bcmcp-data` (tenants, `session.key`, logs, Caddy config backups). **Never commit or print anything in there.**
+- API on `127.0.0.1:3300` (`run.sh`), website on `127.0.0.1:3301` (`web.sh`, `next start`). Restart both with `/home/cloudroom-agent/bcmcp-run/restart.sh`. After pulling web changes run `cd apps/web && npx next build` BEFORE restart. (A stale `next start` from an old build caused "This page couldn't load"; restart.sh kills by working directory.)
+- Caddy (shared with Stanley, serves `stanley.waltreno.systems`) has a route for host `mcp.waltreno.systems`: `/t/*`, `/auth/*`, `/api/*` -> 3300, everything else -> 3301. It was added through the Caddy admin API (`localhost:2019`), so it is **not persistent** across a Caddy restart or reboot, and the node processes are not systemd services either. Needs root to make permanent (Caddyfile snippet + two systemd units). Backups: `bcmcp-data/caddy-config-backup*.json`. Do not touch the Stanley route.
+- DNS: `mcp.waltreno.systems` A record at Hostinger points to `82.180.137.78`.
+- Chromium for Playwright is in `~/.cache/ms-playwright` (auto-detected, or set `PLAYWRIGHT_CHROMIUM`).
+- Trace's Shape PHX login for testing is in `bcmcp-data/secrets/shapephx.env` (his own account). Ask him before using it, delete it when done. Secrets only via `room-cli secret request`, one per form, only after he says he's ready.
+
+## GitHub access
+`gh` is logged in on the VPS as `tracewalters` (shared home folder, so every thread has it). Token expires; if pushes fail, ask Trace to renew via the secure form. Local branch naming: work on a branch, open a PR to `main`, end PR bodies with `Built with [Cloudroom](https://cloudroom.dev)`. Stacked PRs got messy: prefer one PR into `main`.
+
+## Next steps (in order)
+1. **Inspection booking on Shape PHX** (the product's core promise). Port Stanley 1.0's playbook: `/home/cloudroom-agent/stanley-build/stanley-project/scripts/bin/shapephx.py` and the SOP `rules/vault/Knowledge/sops/shapephx-cli.md` (same dir). Rules: Request button is in a scrolled datatable, click with JS; date format "Oct 26, 2026"; site contact name + phone/email required (use the company profile); refuse weekends and past dates; refuse an INS already scheduled; verify the INS appears under Scheduled after Save; cancel needs 24 h notice. Build `propose` + `commit` in `shape-phx.ts`, test with a dry run that stops before Save (press Cancel) and only do one live booking with Trace's explicit approval. In hosted mode writes need a two-step approval (see `src/brain/approval.ts` `gate` for a preview+token pattern; move it to `src/`), plus the Claude app's own tool-approval prompt.
+2. **Make the deployment permanent** (needs Trace to run root commands): systemd units for API and web, Caddy snippet.
+3. **Vault key**: move the per-company key out of the same folder (KMS or env-provided master key) before real customers.
+4. **Dashboard**: sort ready cities to the top of "Add more cities"; show inspections as a calendar; loading states for the slow (~1 min) first inspections read.
+5. **More cities**: research which portal software each Phoenix-metro city uses (Queen Creek, Cave Creek, Maricopa, Mesa, Chandler, Gilbert...) and use `docs/ROADMAP.md` portal playbook. Public Shape PHX data (ArcGIS layer at `mapportal.phoenix.gov/pds/rest/services/ShapePHX/ShapePHXPermitsPoints/MapServer`, weekly) is a no-login fallback.
+6. Scheduled sync / alerts (failed inspection, expiring permit). Not built; everything is on request with a 5-minute in-memory cache.
+7. Parked: company brain, rules packs, books, CRM, inventory, usage-based pricing. See `docs/ROADMAP.md`.
+
+## Gotchas
+- Shape PHX: dismiss the whatfix "Alright!" iframe modal, click Login with JS, sign in on `phxadb2c.b2clogin.com`. Playwright locators see through shadow DOM; `document.querySelectorAll` does not. Permit numbers can contain a space (`CTR-102608432- SME`). Details in `docs/PORTAL_NOTES.md`.
+- The schema changed: permit status `cancelled`, inspection status `completed`, `appliedAt` and `actions` optional. `npm run schemas` regenerates `spec/schemas` (a test checks they match).
+- Tests spawn real servers on free ports; don't run them while something else holds your ports. Don't use ports 3300/3301 for dev (production).
+- Parallel portal sessions are serialized in-process on purpose.
+- The user's Claude client (inside Cloudroom) may or may not show MCP forms; the text fallback exists. Test in a NEW chat (tool lists are cached per chat).
+
+## How to verify quickly
+```sh
+npm ci && npm run typecheck && npm test           # 37 pass
+curl -s -o /dev/null -w "%{http_code}\n" https://mcp.waltreno.systems/dashboard   # 200
+curl -s -o /dev/null -w "%{http_code}\n" https://stanley.waltreno.systems/healthz # 200 (must stay up)
+```
