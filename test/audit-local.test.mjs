@@ -70,7 +70,7 @@ test('built stdio MCP lists tools and prompts and handles an approved brain writ
   client.setRequestHandler(ElicitRequestSchema, () => ({ action: 'accept', content: { approve: ++approvals !== 1 } }));
   try {
     await client.connect(new StdioClientTransport({ command: process.execPath, args: ['src/mcp.ts'], env }));
-    assert.equal((await client.listTools()).tools.length, 18);
+    assert.equal((await client.listTools()).tools.length, 19);
     assert.equal((await client.getPrompt({ name: 'brain-setup' })).messages.length, 1);
     const call = (name, args) => client.callTool({ name, arguments: args });
     assert.ok((await call('list_connections', {})).content[0].text.includes('demo-city'));

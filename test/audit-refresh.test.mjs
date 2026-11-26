@@ -35,7 +35,7 @@ test('refresh rule: fresh is cached, stale refreshes in the background, refresh 
 
     // No cache yet: wait for the Portal.
     const first = await get('/api/permits');
-    assert.equal(first.permits.length, 3);
+    assert.equal(first.permits.length, 7);
     assert.ok(first.fetchedAt && !first.refreshing);
     assert.ok(first.ms >= 250, 'first read goes to the Portal');
 

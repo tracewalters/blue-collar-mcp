@@ -32,8 +32,8 @@ test('inspector comments: read one inspection in Claude and on the dashboard, no
 
     // The list stays fast: no comments there.
     const list = JSON.parse((await call('list_inspections')).content[0].text);
-    assert.ok(list.length >= 3);
-    assert.ok(list.every((i) => i.comments === undefined));
+    assert.ok(list.inspections.length >= 3);
+    assert.ok(list.inspections.every((i) => i.comments === undefined));
 
     // Claude: a failed inspection carries the inspector's comments.
     const failed = JSON.parse((await call('get_inspection', { city: 'demo-city', permitId: 'ELE-2026-0388', inspectionId: 'INS-3' })).content[0].text);
