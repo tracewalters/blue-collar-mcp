@@ -1,11 +1,16 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+
+/** Hosted mode runs each request inside a tenant (its brain dir). Vault, state and brain are then per company. */
+export const tenantDir = new AsyncLocalStorage<string>();
 
 /** Data dir. Override with PERMIT_MCP_HOME. */
 export const home = () => {
-  const dir = process.env.PERMIT_MCP_HOME ?? join(homedir(), ".permit-mcp");
+  const t = tenantDir.getStore();
+  const dir = t ? dirname(t) : process.env.PERMIT_MCP_HOME ?? join(homedir(), ".permit-mcp");
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   return dir;
 };

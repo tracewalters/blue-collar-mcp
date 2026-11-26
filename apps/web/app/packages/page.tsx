@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Packages · Blue Collar MCP" };
 export default function Packages() {
   return (
     <>
-      <PageHeader title="Add a crew member" accent="for each job" sub="Start with the brain. Add the rest when you're ready. Each one has its own guided setup." />
+      <PageHeader title="Add a crew member" accent="for each job" sub="Permits works today. The brain, rules, and books are coming later. Each one has its own guided setup." />
       <div className="space-y-20">
         {packages.map((p) => (
           <div key={p.id}>

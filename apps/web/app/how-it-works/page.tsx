@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Button, Card, ChatDemo, PageHeader } from "@/components/ui";
-import { brainSetup } from "@/lib/content";
+import { permitsSetup } from "@/lib/content";
 
 export const metadata: Metadata = { title: "How it works · Blue Collar MCP" };
 
 const pattern = [
-  ["You type a command", "Like /brain-setup or /permits-setup."],
+  ["You type a command", "Like /permits-setup."],
   ["Claude asks one question", "Pick A, B, C, or D. No essays."],
   ["You get exact steps", "The right link and what to click."],
   ["Claude checks it worked", "It tests the connection before moving on."],
@@ -40,7 +40,7 @@ export default function HowItWorks() {
             ))}
           </ol>
         </div>
-        <ChatDemo command="/brain-setup" turns={brainSetup} />
+        <ChatDemo command="/permits-setup" turns={permitsSetup} />
       </div>
 
       <section aria-labelledby="promise" className="mt-24 grid gap-10 lg:grid-cols-[280px_1fr]">
@@ -55,7 +55,7 @@ export default function HowItWorks() {
       <section className="mt-24 grid gap-4 md:grid-cols-3">
         {[
           ["Review the odd ones", "Unclear matches and duplicates, one at a time. You decide."],
-          ["Pick your rules", "Next it offers /rules-setup so answers match your shop."],
+          ["Check your dashboard", "Every permit and inspection, problems first."],
           ["Ask anything", "“Which permits expire this month?”"],
         ].map(([t, d]) => <Card key={t}><h3 className="font-semibold">{t}</h3><p className="mt-1 text-ink-2">{d}</p></Card>)}
       </section>

@@ -12,12 +12,14 @@ jobs:
         with: { node-version: 24, cache: npm }
       - run: npm ci
       - id: run
-        run: npm run canary 2>&1 | tee canary.log
+        shell: bash
+        run: set -o pipefail; npm run canary 2>&1 | tee canary.log
         continue-on-error: true
       - name: Open an issue if an adapter broke
         if: steps.run.outcome == 'failure'
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
+          gh label create adapter-broke --color D93F0B --description "A permit portal adapter failed its canary" 2>/dev/null || true
           gh issue create --label adapter-broke \
             --title "Canary failed $(date -u +%F)" \
             --body "$(printf 'An adapter canary failed.\n\n```\n%s\n```\n\nSee docs/SELF_IMPROVING.md for the repair steps.' "$(tail -40 canary.log)")"
