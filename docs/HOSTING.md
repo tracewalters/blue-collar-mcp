@@ -12,3 +12,5 @@ Notes: the URL is the password, so treat it like one (only its hash is stored). 
 Writes in hosted mode are two steps: the first call returns a preview and a token tied to that exact content and company; repeating it with the token saves. This stops content changing after the preview. It does not prove a human said yes, so the Claude app's tool-approval prompt is still the real gate.
 
 Website and API on one host: Caddy sends `/t/*`, `/auth/*` and `/api/*` to the hosted server (port 3300) and everything else to the Next.js app (`apps/web`, `next start`, port 3301). Dashboard sign-in links come from the `open_dashboard` MCP tool. Brain tools are off unless `BCMCP_BRAIN=1`.
+
+Shape PHX needs Chromium on the server: `npx playwright-core install chromium` (or set `PLAYWRIGHT_CHROMIUM` to a Chrome binary). Reading inspections for all permits takes about a minute the first time; results are cached for 5 minutes.

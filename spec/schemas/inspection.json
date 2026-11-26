@@ -16,6 +16,7 @@
       "enum": [
         "needed",
         "scheduled",
+        "completed",
         "passed",
         "failed",
         "cancelled"

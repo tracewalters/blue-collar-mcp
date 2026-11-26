@@ -20,7 +20,7 @@ test('built CLI smoke: help, login, connections, city filters, detail, proposal,
   assert.ok(demo > 0);
   assert.match(ok(cli(env, [])), /schedule/);
   assert.match(ok(cli(env, ['login'], demo + '\nwrong\nwrong\ndemo\ndemo\n')), /Connected/);
-  const phoenix = cities.findIndex(city => city.id === 'phoenix-az') + 1;
+  const phoenix = cities.findIndex(city => city.id === 'scottsdale-az') + 1;
   assert.match(ok(cli(env, ['login'], phoenix + '\nfixture\nfixture\n')), /not built yet/);
   assert.equal(JSON.parse(ok(cli(env, ['connections', '--json']))).length, 1);
   assert.equal(JSON.parse(ok(cli(env, ['permits', '--city', 'demo-city', '--json']))).length, 3);
@@ -108,7 +108,7 @@ test('schema generation matches tracked schemas', () => {
 });
 
 test('canary can run in an empty test environment', () => {
-  assert.equal(execFileSync(process.execPath, ['src/canary.ts'], { encoding: 'utf8', env: fresh() }), '');
+  assert.match(execFileSync(process.execPath, ['src/canary.ts'], { encoding: 'utf8', env: fresh() }), /^skip phoenix-az: no canary creds\n$/);
 });
 
 test('service rejects expired tokens and missing permits, and logout works in a fresh home', async () => {
@@ -132,7 +132,7 @@ test('service rejects expired tokens and missing permits, and logout works in a 
 
 test('planned adapters reject requests and never contact the portal', async () => {
   const {getAdapter} = await import('../src/adapter.ts');
-  const city = (await import('../src/jurisdictions.ts')).getJurisdiction('phoenix-az');
+  const city = (await import('../src/jurisdictions.ts')).getJurisdiction('scottsdale-az');
   await assert.rejects(() => getAdapter(city.platform).listPermits(city, {}), /planned but not built/);
 });
 test('canary reports missing credentials, success, and failure with a fixture adapter', () => {

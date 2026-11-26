@@ -29,7 +29,8 @@
         "inspection_phase",
         "finaled",
         "expired",
-        "denied"
+        "denied",
+        "cancelled"
       ]
     },
     "appliedAt": {
@@ -41,6 +42,12 @@
     "feesDue": {
       "default": 0,
       "type": "number"
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "required": [
@@ -49,7 +56,6 @@
     "type",
     "address",
     "status",
-    "appliedAt",
     "feesDue"
   ],
   "additionalProperties": false

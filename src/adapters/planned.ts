@@ -17,4 +17,4 @@ export const planned = (platform: string): PortalAdapter => ({
   commit: nope(platform),
 });
 
-export const PLANNED_PLATFORMS = ["tyler-energov", "accela", "opengov", "salesforce-experience"];
+export const PLANNED_PLATFORMS = ["tyler-energov", "accela", "opengov"];

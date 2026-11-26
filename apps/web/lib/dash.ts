@@ -2,12 +2,12 @@
 
 export type PermitStatus =
   | "draft" | "submitted" | "in_review" | "corrections_required" | "approved"
-  | "issued" | "inspection_phase" | "finaled" | "expired" | "denied";
+  | "issued" | "inspection_phase" | "finaled" | "expired" | "denied" | "cancelled";
 export interface Permit {
   id: string; jurisdiction: string; type: string; address: string; description?: string;
-  status: PermitStatus; appliedAt: string; expiresAt?: string; feesDue: number;
+  status: PermitStatus; appliedAt?: string; expiresAt?: string; feesDue: number; actions?: string[];
 }
-export type InspStatus = "needed" | "scheduled" | "passed" | "failed" | "cancelled";
+export type InspStatus = "needed" | "scheduled" | "completed" | "passed" | "failed" | "cancelled";
 export interface Inspection {
   id: string; permitId: string; type: string; status: InspStatus; scheduledFor?: string; notes?: string; jurisdiction?: string;
 }
@@ -36,7 +36,7 @@ export async function api<T>(path: string, post?: object): Promise<Result<T>> {
 }
 
 // Only these portal platforms can log in today. Others show "Coming soon".
-const BUILT = ["demo"];
+const BUILT = ["demo", "shape-phx"];
 export const isBuilt = (c: City) => (c.maturity ? c.maturity !== "planned" : BUILT.includes(c.platform));
 
 export type Tone = "ok" | "warn" | "bad" | "idle";
@@ -52,17 +52,19 @@ export const permitLabel: Record<PermitStatus, [string, Tone]> = {
   finaled: ["Finaled", "ok"],
   expired: ["Expired", "bad"],
   denied: ["Denied", "bad"],
+  cancelled: ["Cancelled", "idle"],
 };
 
 export const inspLabel: Record<InspStatus, [string, Tone]> = {
   needed: ["Needs booking", "warn"],
   scheduled: ["Scheduled", "ok"],
+  completed: ["Completed", "ok"],
   passed: ["Passed", "ok"],
   failed: ["Failed", "bad"],
   cancelled: ["Cancelled", "idle"],
 };
 
-export const CLOSED: PermitStatus[] = ["finaled", "expired", "denied"];
+export const CLOSED: PermitStatus[] = ["finaled", "expired", "denied", "cancelled"];
 
 // Dates arrive as YYYY-MM-DD. Read them as local days so nothing shifts by a timezone.
 export const day = (s: string) => { const [y, m, d] = s.slice(0, 10).split("-").map(Number); return new Date(y, m - 1, d); };

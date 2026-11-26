@@ -50,7 +50,7 @@ function Board({ me }: { me: Me }) {
     .map((p) => ({ p, x: problem(p, inspections) }))
     .filter(({ p }) => city === "all" || p.jurisdiction === city)
     .filter(({ p, x }) => view === "all" || (view === "action" ? x.rank < 9 : view === "open" ? !CLOSED.includes(p.status) : CLOSED.includes(p.status)))
-    .sort((a, b) => a.x.rank - b.x.rank || b.p.appliedAt.localeCompare(a.p.appliedAt));
+    .sort((a, b) => a.x.rank - b.x.rank || (b.p.appliedAt ?? "").localeCompare(a.p.appliedAt ?? ""));
 
   const tiles: [string, string, boolean][] = [
     ["Open permits", String(open.length), false],

@@ -1,4 +1,23 @@
 [
-  { "id": "demo-city", "name": "Demo City", "state": "XX", "platform": "demo", "baseUrl": "https://demo.invalid" },
-  { "id": "phoenix-az", "name": "Phoenix", "state": "AZ", "platform": "salesforce-experience", "baseUrl": "https://TODO.invalid" }
+ {
+  "id": "demo-city",
+  "name": "Demo City",
+  "state": "XX",
+  "platform": "demo",
+  "baseUrl": "https://demo.invalid"
+ },
+ {
+  "id": "phoenix-az",
+  "name": "Phoenix",
+  "state": "AZ",
+  "platform": "shape-phx",
+  "baseUrl": "https://shapephx.phoenix.gov"
+ },
+ {
+  "id": "scottsdale-az",
+  "name": "Scottsdale",
+  "state": "AZ",
+  "platform": "tyler-energov",
+  "baseUrl": "https://TODO.invalid"
+ }
 ]
