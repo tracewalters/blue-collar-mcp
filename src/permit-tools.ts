@@ -36,6 +36,11 @@ export const registerPermits = (server: McpServer, opts: { writes: boolean; conn
     inputSchema: { city, refresh }, annotations: readOnly,
   }, ({ city, refresh }) => run(() => svc.listPermits(city, { refresh }))());
   
+  server.registerTool("list_jobs", {
+    description: "Jobs: permits grouped by site address across all connected cities, with the names the user gave them. Permits with no address are listed as ungrouped.",
+    annotations: readOnly,
+  }, run(() => svc.listJobs()));
+
   server.registerTool("get_permit", {
     description: "Full detail and inspections for one permit." + FRESH,
     inputSchema: { city: z.string(), permitId: z.string(), refresh }, annotations: readOnly,

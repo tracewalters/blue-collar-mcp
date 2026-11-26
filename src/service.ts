@@ -5,6 +5,7 @@ import "./adapters/index.ts";
 import { getAdapter, portalDate, type Credentials } from "./adapter.ts";
 import { getJurisdiction } from "./jurisdictions.ts";
 import { getProfile } from "./profile.ts";
+import { groupJobs, mergeJobs, renameJob } from "./jobs.ts";
 import { Plan } from "./schemas.ts";
 import { loadSecret, readDb, removeConnection, saveConnection, writeDb } from "./store.ts";
 import { home, open, seal } from "./vault.ts";
@@ -111,6 +112,12 @@ export async function listPermits(jurisdictionId?: string, opts: { refresh?: boo
   const parts = await Promise.all(cities(jurisdictionId).map((id) => cityPermits(id, opts.refresh)));
   return { permits: parts.flatMap((p) => p.data), ...freshness(parts) };
 }
+
+/** Permits grouped into Jobs by site address, with the Company's renames and merges applied. */
+export const listJobs = async () => groupJobs((await listPermits()).permits);
+const jobIds = async () => (await listJobs()).jobs.map((j) => j.id);
+export const renameJobTo = async (job: string, name: string) => { renameJob(await jobIds(), job, name); return listJobs(); };
+export const mergeJob = async (from: string, into: string) => { mergeJobs(await jobIds(), from, into); return listJobs(); };
 
 export async function listInspections(jurisdictionId?: string, opts: { refresh?: boolean } = {}) {
   const parts = await Promise.all(cities(jurisdictionId).map((id) => cityInspections(id, opts.refresh)));

@@ -24,7 +24,7 @@ test('built CLI smoke: help, login, connections, city filters, detail, proposal,
   const phoenix = cities.findIndex(city => city.id === 'scottsdale-az') + 1;
   assert.match(ok(cli(env, ['login'], phoenix + '\nfixture\nfixture\n')), /not built yet/);
   assert.equal(JSON.parse(ok(cli(env, ['connections', '--json']))).length, 1);
-  assert.equal(JSON.parse(ok(cli(env, ['permits', '--city', 'demo-city', '--json']))).length, 3);
+  assert.equal(JSON.parse(ok(cli(env, ['permits', '--city', 'demo-city', '--json']))).length, 7);
   const permit = JSON.parse(ok(cli(env, ['permit', 'demo-city', 'BLD-2026-0142', '--json'])));
   assert.equal(permit.inspections.length, 2);
   const proposal = JSON.parse(ok(cli(env, ['schedule', 'demo-city', permit.permit.id, '--type', 'Framing', '--date', NEXT, '--json'])));
@@ -141,7 +141,7 @@ test('canary reports missing credentials, success, and failure with a fixture ad
     env: {...fresh(), CANARY_DEMO_CITY_USER: creds, CANARY_DEMO_CITY_PASS: creds}, encoding: 'utf8', timeout: 5000,
   });
   assert.match(ok(run('')), /skip demo-city: no canary creds/);
-  assert.match(ok(run('demo')), /ok +demo-city: 3 permits/);
+  assert.match(ok(run('demo')), /ok +demo-city: 7 permits/);
   const failed = run('invalid-fixture');
   assert.equal(failed.status, 1);
   assert.match(failed.stderr, /FAIL demo-city/);

@@ -7,7 +7,7 @@ import { Chip } from "@/components/ui";
 
 // Dashboard building blocks. Follows /TASTE.md: status = small dot + words.
 
-const dot: Record<Tone, string> = { ok: "bg-ok", warn: "bg-warn", bad: "bg-bad", idle: "bg-white/35" };
+export const dot: Record<Tone, string> = { ok: "bg-ok", warn: "bg-warn", bad: "bg-bad", idle: "bg-white/35" };
 const ring: Record<Tone, string> = { ok: "border-line", warn: "border-warn/40", bad: "border-bad/50", idle: "border-line" };
 
 export function StatusChip({ label, tone }: { label: string; tone: Tone }) {
