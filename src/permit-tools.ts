@@ -13,7 +13,7 @@ const run = (fn: () => Promise<unknown> | unknown) => async () => {
 const readOnly = { readOnlyHint: true, openWorldHint: true };
 const city = z.string().optional().describe("Jurisdiction id. Omit for all connected cities.");
 const refresh = z.boolean().optional().describe("Read the city portal now. Only when the user asks for the latest; data older than 15 minutes refreshes on its own.");
-const FRESH = " Results carry fetchedAt and ageMinutes: say how fresh the data is in a few words. If refreshing is true, newer data is on its way; say so.";
+const FRESH = " Results carry fetchedAt and ageMinutes: say how fresh the data is in a few words. If stale is true, the city portal could not be reached and this is older data; say so.";
 
 /** Permit tools. Booking dry runs are always on. writes=true adds commit_action (local stdio only: needs a prompt the user can approve). */
 export const registerPermits = (server: McpServer, opts: { writes: boolean; connectHint: string }) => {
@@ -34,17 +34,17 @@ export const registerPermits = (server: McpServer, opts: { writes: boolean; conn
   server.registerTool("list_permits", {
     description: "List permits across connected city portals." + FRESH,
     inputSchema: { city, refresh }, annotations: readOnly,
-  }, ({ city, refresh }) => run(() => svc.listPermits(city, { refresh }))());
+  }, ({ city, refresh }) => run(() => svc.listPermits(city, { refresh, wait: true }))());
   
   server.registerTool("list_jobs", {
     description: "Jobs: permits grouped by site address across all connected cities, with the names the user gave them. Permits with no address are listed as ungrouped.",
     annotations: readOnly,
-  }, run(() => svc.listJobs()));
+  }, run(() => svc.listJobs({ wait: true })));
 
   server.registerTool("get_permit", {
     description: "Full detail and inspections for one permit." + FRESH,
     inputSchema: { city: z.string(), permitId: z.string(), refresh }, annotations: readOnly,
-  }, ({ city, permitId, refresh }) => run(() => svc.getPermit(city, permitId, { refresh }))());
+  }, ({ city, permitId, refresh }) => run(() => svc.getPermit(city, permitId, { refresh, wait: true }))());
   
   server.registerTool("get_inspection", {
     description: "One inspection with the inspector's comments (why it passed or failed). Use when the user asks what the inspector said. Can take up to a minute on real portals.",
@@ -54,7 +54,7 @@ export const registerPermits = (server: McpServer, opts: { writes: boolean; conn
   server.registerTool("list_inspections", {
     description: "Inspections across connected cities: needed, scheduled, passed, failed." + FRESH,
     inputSchema: { city, refresh }, annotations: readOnly,
-  }, ({ city, refresh }) => run(() => svc.listInspections(city, { refresh }))());
+  }, ({ city, refresh }) => run(() => svc.listInspections(city, { refresh, wait: true }))());
   server.registerTool("propose_inspection", {
     description: "Book an inspection, step 1 (dry run). Fills the city's request form with the site contact from the company profile, then stops before Save. Nothing is sent. Show the user the preview." + (opts.writes ? " Returns a token for commit_action." : " Booking itself is not turned on here yet."),
     inputSchema: { city: z.string(), permitId: z.string(), type: z.string().describe("Inspection type, e.g. Framing"), date: z.string().describe("YYYY-MM-DD, a weekday after today") },
