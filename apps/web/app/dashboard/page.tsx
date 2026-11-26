@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { AskClaude, DashShell, Loading, Note, Pill, Problem, SignedOut, StatusChip, limeBtn, useApi } from "@/components/Dash";
 import {
-  CLOSED, daysFrom, fmtDay, inspLabel, money, permitHref, permitLabel, problem,
+  CLOSED, daysFrom, fmtDay, inspLabel, money, pendingCities, permitHref, permitLabel, problem,
   type Inspection, type Me, type Permit,
 } from "@/lib/dash";
 
@@ -13,8 +13,23 @@ const views = [["all", "All"], ["action", "Needs you"], ["open", "Open"], ["clos
 export default function Dashboard() {
   return (
     <DashShell>
-      {(me) => (me.connections.length ? <Board me={me} /> : <NoCities />)}
+      {(me) => (
+        <>
+          <NeedsLogin n={pendingCities(me).length} />
+          {me.connections.length ? <Board me={me} /> : <NoCities />}
+        </>
+      )}
     </DashShell>
+  );
+}
+
+function NeedsLogin({ n }: { n: number }) {
+  if (!n) return null;
+  return (
+    <Link href="/dashboard/connect" className="mt-8 flex min-h-12 items-center justify-between gap-3 rounded-xl border border-warn/40 bg-panel px-4 py-3 hover:bg-panel-2">
+      <span className="flex items-center gap-2 text-[15px]"><span className="h-2 w-2 shrink-0 rounded-full bg-warn" aria-hidden />{n} {n === 1 ? "city still needs" : "cities still need"} a login</span>
+      <span className="shrink-0 text-[15px] font-semibold">Connect →</span>
+    </Link>
   );
 }
 

@@ -11,9 +11,12 @@ export type InspStatus = "needed" | "scheduled" | "completed" | "passed" | "fail
 export interface Inspection {
   id: string; permitId: string; type: string; status: InspStatus; scheduledFor?: string; notes?: string; jurisdiction?: string;
 }
-export interface City { id: string; name: string; state: string; platform: string; maturity?: string }
+export interface City { id: string; name: string; state: string; platform: string; maturity: "ready" | "demo" | "planned" }
 export interface Connection { id: string; name: string; platform: string; connectedAt: string }
-export interface Me { company: string; connections: Connection[]; cities: City[] }
+export interface Profile {
+  company: string; userName: string; role?: string; phone?: string; email?: string; license?: string; cities: string[];
+}
+export interface Me { company: string; userName?: string; profile: Profile | null; connections: Connection[]; cities: City[] }
 
 export type Result<T> = { ok: true; data: T } | { ok: false; signedOut: boolean; message: string };
 
@@ -35,9 +38,14 @@ export async function api<T>(path: string, post?: object): Promise<Result<T>> {
   }
 }
 
-// Only these portal platforms can log in today. Others show "Coming soon".
-const BUILT = ["demo", "shape-phx"];
-export const isBuilt = (c: City) => (c.maturity ? c.maturity !== "planned" : BUILT.includes(c.platform));
+/** Planned portals can't log in yet. They show "Coming soon". */
+export const isBuilt = (c: City) => c.maturity !== "planned";
+
+/** Cities from the profile that can log in but aren't connected yet. */
+export const pendingCities = (me: Me) => {
+  const on = new Set(me.connections.map((c) => c.id));
+  return (me.profile?.cities ?? []).map((id) => me.cities.find((c) => c.id === id)).filter((c): c is City => !!c && isBuilt(c) && !on.has(c.id));
+};
 
 export type Tone = "ok" | "warn" | "bad" | "idle";
 

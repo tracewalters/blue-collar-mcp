@@ -47,3 +47,5 @@ body { background: var(--bg); color: var(--ink); font-family: var(--font-sans); 
 }
 .glow { background: radial-gradient(ellipse at center, rgba(212,255,31,.14), transparent 60%); }
 .no-scrollbar { scrollbar-width: none; }
+/* Login progress: fills most of the way over ~30 s, never claims done. */
+@keyframes fill { from { transform: scaleX(.04); } to { transform: scaleX(.92); } }

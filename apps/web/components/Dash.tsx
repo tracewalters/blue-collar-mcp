@@ -83,7 +83,7 @@ export function DashShell({ children, title }: { title?: ReactNode; children: (m
     <div className="pt-8 sm:pt-12">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-sm uppercase tracking-wide text-ink-3">Permit dashboard</p>
+          <p className="text-sm uppercase tracking-wide text-ink-3">{res.data.userName ? `${res.data.userName} · ` : ""}Permit dashboard</p>
           <h1 className="display mt-2 break-words text-4xl sm:text-6xl">{title ?? res.data.company}</h1>
         </div>
         <div className="flex gap-2">
