@@ -82,7 +82,7 @@ async function main() {
   const [cmd, a, b, c] = pos;
   switch (cmd) {
     case "login": return loginFlow();
-    case "logout": svc.logout(a); return console.log("Removed.");
+    case "logout": await svc.logout(a); return console.log("Removed.");
     case "cities": { const c = listJurisdictions(); return out(c, table(c.map((x) => ({ id: x.id, name: `${x.name}, ${x.state}`, platform: x.platform })))); }
     case "connections": { const c = svc.listConnections(); return out(c, table(c)); }
     case "permits": { const { permits: p } = await svc.listPermits(flag("city")); return out(p, table(p.map((x) => ({ id: x.id, type: x.type, address: x.address, status: x.status })))); }

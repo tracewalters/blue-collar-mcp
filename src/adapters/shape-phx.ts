@@ -237,17 +237,24 @@ async function fillField(p: Page, name: string, value: string) {
   }, name);
 }
 
-const pressModalCancel = (p: Page) => p.evaluate(() => {
-  const all = (window as unknown as { __all: Deep }).__all;
-  all(document, "section.slds-modal button").find((x) => x.innerText.trim() === "Cancel")?.click();
-}).catch(() => {});
+/** The dry run must never risk a Save: if Cancel cannot be pressed, fail loudly. */
+async function pressModalCancel(p: Page) {
+  const pressed = await p.evaluate(() => {
+    const all = (window as unknown as { __all: Deep }).__all;
+    const modal = all(document, "section.slds-modal")[0];
+    if (!modal) return true; // nothing open
+    const b = all(modal, "button").find((x) => x.innerText.trim() === "Cancel");
+    b?.click();
+    return !!b;
+  }).catch(() => false);
+  if (!pressed) throw new Error("Could not press Cancel on the Shape PHX Request form. Close it in the portal; nothing was saved by us.");
+}
 
 async function dryRunRequest(p: Page, j: string, r: InspectionRequest): Promise<Plan> {
+  // "Already scheduled" is checked in src/service.ts before this runs.
   const rows = await readInspections(p, r.permitId); // leaves the page on the Inspection Scheduler
   const want = r.type.toLowerCase();
-  const done = rows.find((i) => i.status === "scheduled" && i.type.toLowerCase() === want);
-  if (done) throw new Error(`${done.type} (${done.id}) is already scheduled on ${r.permitId}.`);
-  const open = rows.filter((i) => i.status === "needed" && i.type.toLowerCase() === want);
+  const open = rows.filter((i) => i.status === "needed" && (r.inspectionId ? i.id === r.inspectionId : i.type.toLowerCase() === want));
   if (!open.length) {
     const types = rows.filter((i) => i.status === "needed").map((i) => i.type);
     throw new Error(`No ${r.type} inspection is open to request on ${r.permitId}.${types.length ? ` Open: ${[...new Set(types)].join(", ")}.` : ""}`);
@@ -356,6 +363,8 @@ async function readInspection(p: Page, permitId: string, insId: string): Promise
 export const shapePhx: PortalAdapter = {
   platform: "shape-phx",
   maturity: "ready",
+  // The booking dry run below has not been run against the real portal yet (ticket 04). Flip after a live test.
+  bookingVerified: false,
 
   login: (_j, c) => serial(async () => {
     const browser = await chromium.launch({ executablePath: chromePath(), headless: true, args: ["--no-sandbox"] });

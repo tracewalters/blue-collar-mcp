@@ -16,7 +16,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 const freePort = async () => { const s = createServer().listen(0, '127.0.0.1'); await once(s, 'listening'); const { port } = s.address(); await new Promise((r) => s.close(r)); return port; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-test('refresh rule: fresh is cached, stale refreshes in the background, refresh forces, cache survives a restart', { timeout: 30000 }, async () => {
+test('refresh rule: fresh is cached, stale refreshes in the background for the dashboard and waits for Claude, refresh forces, cache survives a restart', { timeout: 30000 }, async () => {
   const port = await freePort();
   const host = 'http://127.0.0.1:' + port;
   const env = { ...process.env, BCMCP_PUBLIC_URL: host, BCMCP_DATA: mkdtempSync(join(tmpdir(), 'bc-refresh-')), BCMCP_MASTER_KEY: Buffer.alloc(32, 9).toString('base64'), PORT: String(port),
@@ -62,6 +62,15 @@ test('refresh rule: fresh is cached, stale refreshes in the background, refresh 
     assert.ok(after.fetchedAt > first.fetchedAt, 'background refresh landed');
     assert.equal(after.refreshing, false);
 
+    // Story 26: Claude uses the same 15-minute rule, but waits for the fresh read instead of getting old data.
+    await sleep(1600);
+    const t0 = Date.now();
+    const claude = await tool('list_permits');
+    assert.ok(claude.fetchedAt > after.fetchedAt, 'Claude waits for the Portal when data is stale');
+    assert.equal(claude.refreshing, false);
+    assert.ok(Date.now() - t0 >= 250);
+    assert.equal(claude.stale, undefined);
+
     // The button (and Claude's refresh flag) force a Portal read even when fresh.
     const forced = await get('/api/permits?refresh=1');
     assert.ok(forced.fetchedAt > after.fetchedAt);
@@ -71,10 +80,20 @@ test('refresh rule: fresh is cached, stale refreshes in the background, refresh 
 
     // Cache is kept per Company on disk, so a restart serves it without a Portal read.
     proc.kill(); await once(proc, 'exit');
+    env.BCMCP_REFRESH_WAIT_MS = '100'; // the Portal (300 ms) is now slower than Claude's wait
     proc = await start();
     const restarted = await get('/api/permits');
     assert.equal(restarted.fetchedAt, viaClaude.fetchedAt);
     assert.ok(restarted.ms < 250);
+
+    // Story 26 fallback: if the Portal is too slow, Claude gets the cached data marked stale, with a plain message.
+    await sleep(1600);
+    const slow = await tool('list_permits');
+    assert.equal(slow.fetchedAt, restarted.fetchedAt);
+    assert.equal(slow.stale, true);
+    assert.match(slow.refreshError, /^Could not reach the city portal/);
+    assert.ok(!/https?:/.test(slow.refreshError));
+    await sleep(400);
 
     // Disconnecting forgets that city's data.
     await fetch(host + '/api/disconnect', { method: 'POST', headers: { cookie: ck, 'content-type': 'application/json', 'x-bc': '1' }, body: JSON.stringify({ city: 'demo-city' }) });

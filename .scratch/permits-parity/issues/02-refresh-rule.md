@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] Stale data triggers a refresh on open
-- [ ] Fresh data does not hit the Portal
-- [ ] Button forces a refresh
+- [x] Stale data triggers a refresh on open
+- [x] Fresh data does not hit the Portal
+- [x] Button forces a refresh

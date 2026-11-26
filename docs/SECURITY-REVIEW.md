@@ -9,11 +9,11 @@ Two read-only reviews by Codex sub-agents. No critical flaw. Status as of this c
 | 3 | One company can exhaust or block the shared process (no limit on MCP sessions, one global portal queue) | High | Open. Per-company and global session caps, per-company browser queues, bounded global concurrency |
 | 4 | Company secret is in every request URL (`/t/<secret>/mcp`) | Medium | Open. Move to a non-secret id in the path plus an auth header or OAuth; redact paths in logs |
 | 5 | "One-time" dashboard links are replayable (2-minute grace; consumed list lost on restart) | Medium | Open. Exchange through a human-triggered POST and persist consumed nonces |
-| 6 | Shape PHX caches are keyed by portal username only, not company | High | Open. Key by company + jurisdiction + account; evict on login and logout |
+| 6 | Shape PHX caches are keyed by portal username only, not company | High | **Fixed** for Shape PHX: the adapter keeps no data cache; data lives in each Company's `cache.json`, dropped on login and logout; record ids are in the Company folder. Only the in-memory refreshed browser session is still keyed by login (see #13) |
 | 7 | Hosted brain approval token is not a human gate; any non-empty `BCMCP_BRAIN` enables it | Medium (parked feature) | Open. Never reuse this gate for portal writes; enable only on `BCMCP_BRAIN === "1"` |
 | 8 | Daily canary can pass without testing anything (no credentials in the workflow) | Medium | Open. Wire scoped test credentials; fail if zero adapters ran |
 | 9 | Deployment not restart-safe | Medium | **Fixed** (systemd units, Caddyfile block) |
-| 10 | JSON state writes are not atomic or locked | High | Partly fixed in PR #16 (atomic state writes). Profiles, tenants and rids still open; add per-company locking |
+| 10 | JSON state writes are not atomic or locked | High | Partly fixed. Atomic state writes (PR #16); `cache.json` and `jobs.json` are now atomic and edited one at a time per file, and a broken file is never read as empty. Profiles, tenants and rids still open |
 | 11 | A partly failed inspections read can look like "no inspections" or return stale data | High | Open. Fail partial reads or return `{data, warnings, staleAt}` |
 | 12 | First dashboard load repeats browser work (permits and inspections both miss the cache) | Medium | Open (ticket 02 addresses caching). Coalesce in-flight reads |
 | 13 | Refreshed Shape PHX session is kept only in memory | Medium | Open. Persist refreshed state |
