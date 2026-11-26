@@ -19,5 +19,117 @@
   "state": "AZ",
   "platform": "tyler-energov",
   "baseUrl": "https://TODO.invalid"
+ },
+ {
+  "id": "avondale-az",
+  "name": "Avondale",
+  "state": "AZ",
+  "platform": "accela",
+  "baseUrl": "https://TODO.invalid"
+ },
+ {
+  "id": "queen-creek-az",
+  "name": "Queen Creek",
+  "state": "AZ",
+  "platform": "tbd",
+  "baseUrl": "https://TODO.invalid"
+ },
+ {
+  "id": "cave-creek-az",
+  "name": "Cave Creek",
+  "state": "AZ",
+  "platform": "tbd",
+  "baseUrl": "https://TODO.invalid"
+ },
+ {
+  "id": "maricopa-az",
+  "name": "Maricopa",
+  "state": "AZ",
+  "platform": "tbd",
+  "baseUrl": "https://TODO.invalid"
+ },
+ {
+  "id": "mesa-az",
+  "name": "Mesa",
+  "state": "AZ",
+  "platform": "tbd",
+  "baseUrl": "https://TODO.invalid"
+ },
+ {
+  "id": "chandler-az",
+  "name": "Chandler",
+  "state": "AZ",
+  "platform": "tbd",
+  "baseUrl": "https://TODO.invalid"
+ },
+ {
+  "id": "gilbert-az",
+  "name": "Gilbert",
+  "state": "AZ",
+  "platform": "tbd",
+  "baseUrl": "https://TODO.invalid"
+ },
+ {
+  "id": "tempe-az",
+  "name": "Tempe",
+  "state": "AZ",
+  "platform": "tbd",
+  "baseUrl": "https://TODO.invalid"
+ },
+ {
+  "id": "glendale-az",
+  "name": "Glendale",
+  "state": "AZ",
+  "platform": "tbd",
+  "baseUrl": "https://TODO.invalid"
+ },
+ {
+  "id": "peoria-az",
+  "name": "Peoria",
+  "state": "AZ",
+  "platform": "tbd",
+  "baseUrl": "https://TODO.invalid"
+ },
+ {
+  "id": "surprise-az",
+  "name": "Surprise",
+  "state": "AZ",
+  "platform": "tbd",
+  "baseUrl": "https://TODO.invalid"
+ },
+ {
+  "id": "goodyear-az",
+  "name": "Goodyear",
+  "state": "AZ",
+  "platform": "tbd",
+  "baseUrl": "https://TODO.invalid"
+ },
+ {
+  "id": "paradise-valley-az",
+  "name": "Paradise Valley",
+  "state": "AZ",
+  "platform": "tbd",
+  "baseUrl": "https://TODO.invalid"
+ },
+ {
+  "id": "fountain-hills-az",
+  "name": "Fountain Hills",
+  "state": "AZ",
+  "platform": "tbd",
+  "baseUrl": "https://TODO.invalid"
+ },
+ {
+  "id": "carefree-az",
+  "name": "Carefree",
+  "state": "AZ",
+  "platform": "tbd",
+  "baseUrl": "https://TODO.invalid"
+ },
+ {
+  "id": "maricopa-county-az",
+  "name": "Maricopa County (unincorporated)",
+  "state": "AZ",
+  "platform": "tbd",
+  "baseUrl": "https://TODO.invalid"
  }
 ]

@@ -67,10 +67,32 @@ test('dashboard: Claude hands out a one-time link, session reads and connects, t
     assert.ok(JSON.parse((await c.callTool({ name: 'list_permits', arguments: {} })).content[0].text).length >= 3);
     await c.close();
 
+    // Onboarding through Claude: questions answered, cities chosen, link opens at the first city to connect.
+    const c2 = new Client({ name: 'x', version: '1' });
+    await c2.connect(new StreamableHTTPClientTransport(new URL(b)));
+    const call = async (name, args = {}) => c2.callTool({ name, arguments: args });
+    assert.equal(JSON.parse((await call('get_setup')).content[0].text).needsSetup, true);
+    assert.equal((await call('save_setup', { company: 'Acme', userName: 'Pat', cities: ['nowhere-az'] })).isError, true, 'unknown city rejected');
+    const saved = JSON.parse((await call('save_setup', { company: 'Acme Builders', userName: 'Pat', role: 'GC', phone: '555-0100', cities: ['phoenix-az', 'scottsdale-az'] })).content[0].text);
+    assert.deepEqual(saved.cities, ['phoenix-az', 'scottsdale-az']);
+    const setup = JSON.parse((await call('get_setup')).content[0].text);
+    assert.equal(setup.needsSetup, false);
+    assert.deepEqual(setup.stillToConnect, ['phoenix-az', 'scottsdale-az']);
+    const ckB0 = await session(JSON.parse(JSON.stringify({})) && (await call('open_dashboard')).content[0].text.match(/https?:\/\/\S+/)[0]);
+    assert.equal(lastNext, '/dashboard/connect?city=phoenix-az');
+    await c2.close();
+    const meB = await (await get(ckB0, '/api/me')).json();
+    assert.equal(meB.company, 'Acme Builders');
+    assert.deepEqual(meB.profile.cities, ['phoenix-az', 'scottsdale-az']);
+    assert.ok(meB.cities.find((c) => c.id === 'phoenix-az').maturity === 'ready');
+    assert.equal((await post(ckB0, '/api/profile', { addCity: 'mesa-az' })).status, 200);
+    assert.deepEqual((await (await get(ckB0, '/api/me')).json()).profile.cities.at(-1), 'mesa-az');
+    assert.equal((await post(ckB0, '/api/profile', { removeCity: 'mesa-az' })).status, 200);
+
     // Company B sees nothing of A.
     const ckB = await session(await link(b));
     me = await (await get(ckB, '/api/me')).json();
-    assert.equal(me.company, 'B');
+    assert.equal(me.company, 'Acme Builders');
     assert.equal(me.connections.length, 0);
     assert.deepEqual(await (await get(ckB, '/api/permits')).json(), []);
 

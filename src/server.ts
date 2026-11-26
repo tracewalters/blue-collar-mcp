@@ -14,6 +14,8 @@ import { getAdapter } from "./adapter.ts";
 import "./adapters/index.ts";
 import { listJurisdictions } from "./jurisdictions.ts";
 import { registerPermits } from "./permit-tools.ts";
+import { getProfile, saveProfile } from "./profile.ts";
+import { registerSetup } from "./setup-tools.ts";
 import * as svc from "./service.ts";
 import { home, tenantDir } from "./vault.ts";
 
@@ -98,7 +100,18 @@ const api = async (req: IncomingMessage, res: ServerResponse, path: string) => {
   await tenantDir.run(tenant.dir, async () => {
     try {
       const q = new URL(req.url!, "http://x").searchParams;
-      if (path === "/me") return json(res, 200, { company: tenant.name, connections: svc.listConnections(), cities: listJurisdictions() });
+      if (path === "/me") {
+        const profile = getProfile();
+        const cities = listJurisdictions().map((j) => ({ ...j, maturity: (() => { try { return getAdapter(j.platform).maturity; } catch { return "planned"; } })() }));
+        return json(res, 200, { company: profile?.company ?? tenant.name, userName: profile?.userName, profile, connections: svc.listConnections(), cities });
+      }
+      if (path === "/profile" && req.method === "POST") {
+        const b = z.object({ addCity: z.string().optional(), removeCity: z.string().optional() }).parse(await body(req));
+        const cur = getProfile();
+        if (!cur) return json(res, 400, { error: "Tell Claude to set up your company first." });
+        const cities = cur.cities.filter((c) => c !== b.removeCity).concat(b.addCity ? [b.addCity] : []);
+        return json(res, 200, saveProfile({ cities }));
+      }
       if (path === "/permits") return json(res, 200, await svc.listPermits(q.get("city") ?? undefined));
       if (path === "/inspections") return json(res, 200, await svc.listInspections(q.get("city") ?? undefined));
       if (path === "/permit") return json(res, 200, await svc.getPermit(q.get("city")!, q.get("id")!));
@@ -140,9 +153,10 @@ const handle = async (req: IncomingMessage, res: ServerResponse) => {
   if (req.method !== "POST") { res.writeHead(405, { allow: "POST" }).end(); return; }
 
   const server = new McpServer({ name: "blue-collar-mcp", version: "0.1.0" }, {
-    instructions: "Blue Collar MCP: permits for residential contractors. Use the permit tools for any question about permits, inspections or deadlines. Keep replies under 6 short lines. If no city is connected, call open_dashboard and tell the user to connect their portal there. Never ask for portal passwords in chat." + (process.env.BCMCP_BRAIN ? " " + BRAIN_INSTRUCTIONS : ""),
+    instructions: "Blue Collar MCP: permits for residential contractors. ALWAYS call get_setup first; if needsSetup is true, run the onboarding questions it gives, then save_setup, then open_dashboard. Use the permit tools for any question about permits, inspections or deadlines. Keep replies under 6 short lines. If no city is connected, call open_dashboard and tell the user to connect their portal there. Never ask for portal passwords in chat." + (process.env.BCMCP_BRAIN ? " " + BRAIN_INSTRUCTIONS : ""),
   });
   const dash = `${base}`;
+  registerSetup(server);
   registerPermits(server, { writes: false, connectHint: "call open_dashboard and tell the user to connect their city portal there." });
   server.registerTool("open_dashboard", {
     description: "Give the user a private link (valid 10 minutes) to their permit dashboard. If no city portal is connected yet, or `city` is given, the link opens straight to the connect form for that city (login is typed there, never in chat). Say only: the link, and one line on what they will see.",
@@ -150,10 +164,12 @@ const handle = async (req: IncomingMessage, res: ServerResponse) => {
     annotations: { readOnlyHint: true },
   }, async ({ city }) => {
     const connected = svc.listConnections().map((c) => c.id);
+    const profile = getProfile();
     const firstReal = listJurisdictions().find((j) => { try { const a = getAdapter(j.platform); return a.maturity === "ready" && a.platform !== "demo"; } catch { return false; } })?.id;
-    const target = city ?? (connected.length ? undefined : firstReal);
+    const pending = (profile?.cities ?? []).filter((c) => !connected.includes(c));
+    const target = city ?? (profile ? pending[0] : connected.length ? undefined : firstReal);
     const next = target && !connected.includes(target) ? `/dashboard/connect?city=${encodeURIComponent(target)}` : "/dashboard";
-    const where = next === "/dashboard" ? "your permit dashboard" : "the page to connect your city portal";
+    const where = next === "/dashboard" ? "your permit dashboard" : `the page to connect ${pending.length > 1 ? "your cities" : "your city portal"}`;
     return { content: [{ type: "text" as const, text: `Open ${where}: ${dashboardLink(tenant.id, dash, next)}` }] };
   });
   if (process.env.BCMCP_BRAIN) { registerBrain(server); registerIngest(server); }
