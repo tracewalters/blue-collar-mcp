@@ -22,12 +22,12 @@ test("different titles with the same slug do not overwrite each other", () => {
 
 test("demo booking survives a new process (persisted)", async () => {
   await svc.login("demo-city", { username: "demo", password: "demo" });
-  const before = (await svc.listInspections()).length;
+  const before = (await svc.listInspections()).inspections.length;
   const { token } = await svc.proposeInspection("demo-city", { permitId: "BLD-2026-0142", type: "Final", date: "2026-12-05" });
   await svc.commit(token);
   const { readFileSync } = await import("node:fs");
   assert.match(readFileSync(join(home, "demo-booked.json"), "utf8"), /Final/);
-  assert.equal((await svc.listInspections()).length, before + 1);
+  assert.equal((await svc.listInspections()).inspections.length, before + 1);
 });
 
 test("invalid inspection dates are rejected before a token is issued", async () => {

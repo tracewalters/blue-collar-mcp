@@ -56,15 +56,15 @@ test('dashboard: Claude hands out a one-time link, session reads and connects, t
     assert.equal((await post(ckA, '/api/connect', { city: 'demo-city', username: 'demo', password: 'demo' }, {})).status, 403, 'needs x-bc header');
     assert.equal((await post(ckA, '/api/connect', { city: 'demo-city', username: 'demo', password: 'demo' })).status, 200);
 
-    const permits = await (await get(ckA, '/api/permits')).json();
+    const { permits } = await (await get(ckA, '/api/permits')).json();
     assert.ok(permits.length >= 3);
-    assert.ok((await (await get(ckA, '/api/inspections')).json()).length >= 2);
+    assert.ok((await (await get(ckA, '/api/inspections')).json()).inspections.length >= 2);
     assert.equal((await (await get(ckA, '/api/permit?city=demo-city&id=BLD-2026-0142')).json()).permit.id, 'BLD-2026-0142');
 
     // Claude sees the same connection through the MCP.
     const c = new Client({ name: 'x', version: '1' });
     await c.connect(new StreamableHTTPClientTransport(new URL(a)));
-    assert.ok(JSON.parse((await c.callTool({ name: 'list_permits', arguments: {} })).content[0].text).length >= 3);
+    assert.ok(JSON.parse((await c.callTool({ name: 'list_permits', arguments: {} })).content[0].text).permits.length >= 3);
     await c.close();
 
     // Onboarding through Claude: questions answered, cities chosen, link opens at the first city to connect.
@@ -94,7 +94,7 @@ test('dashboard: Claude hands out a one-time link, session reads and connects, t
     me = await (await get(ckB, '/api/me')).json();
     assert.equal(me.company, 'Acme Builders');
     assert.equal(me.connections.length, 0);
-    assert.deepEqual(await (await get(ckB, '/api/permits')).json(), []);
+    assert.deepEqual((await (await get(ckB, '/api/permits')).json()).permits, []);
 
     await post(ckA, '/api/signout', {});
   } finally {

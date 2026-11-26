@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { AskClaude, DashShell, Loading, Note, Problem, SignedOut, StatusChip, useApi } from "@/components/Dash";
-import { daysFrom, fmtDay, inspLabel, money, permitLabel, problem, type Inspection, type Me, type Permit } from "@/lib/dash";
+import { AskClaude, DashShell, Freshness, Loading, Note, Problem, SignedOut, StatusChip, useFresh } from "@/components/Dash";
+import { daysFrom, fmtDay, inspLabel, money, permitLabel, problem, type Fresh, type Inspection, type Me, type Permit } from "@/lib/dash";
 
 export default function PermitPage() {
   return <Suspense fallback={<Loading />}><Detail /></Suspense>;
@@ -21,9 +21,9 @@ function Detail() {
 }
 
 function Body({ me, city, id }: { me: Me; city: string; id: string }) {
-  const { res, reload } = useApi<{ permit: Permit; inspections: Inspection[] }>(`/permit?city=${encodeURIComponent(city)}&id=${encodeURIComponent(id)}`);
-  if (!res) return <Loading />;
-  if (!res.ok) return res.signedOut ? <SignedOut /> : <Problem message={res.message} retry={reload} />;
+  const { res, busy, refresh } = useFresh<Fresh & { permit: Permit; inspections: Inspection[] }>(`/permit?city=${encodeURIComponent(city)}&id=${encodeURIComponent(id)}`);
+  if (!res) return <Loading slow />;
+  if (!res.ok) return res.signedOut ? <SignedOut /> : <Problem message={res.message} retry={refresh} />;
   const { permit: p, inspections } = res.data;
   const [label, tone] = permitLabel[p.status];
   const x = problem(p, inspections);
@@ -39,6 +39,7 @@ function Body({ me, city, id }: { me: Me; city: string; id: string }) {
 
   return (
     <div className="mt-6 space-y-10">
+      <Freshness at={res.data.fetchedAt} busy={busy} error={res.data.refreshError} onRefresh={refresh} />
       <div>
         <p className="text-xl font-semibold">{p.address}</p>
         <p className="mt-1 text-ink-2">{p.type}</p>

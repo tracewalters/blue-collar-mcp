@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { AskClaude, DashShell, Loading, Note, Pill, Problem, SignedOut, StatusChip, limeBtn, useApi } from "@/components/Dash";
+import { AskClaude, DashShell, Freshness, Loading, Note, Pill, Problem, SignedOut, StatusChip, limeBtn, useFresh } from "@/components/Dash";
 import {
   CLOSED, daysFrom, fmtDay, inspLabel, money, pendingCities, permitHref, permitLabel, problem,
-  type Inspection, type Me, type Permit,
+  type Inspection, type Inspections, type Me, type Permit, type Permits,
 } from "@/lib/dash";
 
 const views = [["all", "All"], ["action", "Needs you"], ["open", "Open"], ["closed", "Closed"]] as const;
@@ -44,16 +44,19 @@ function NoCities() {
 }
 
 function Board({ me }: { me: Me }) {
-  const permits = useApi<Permit[]>("/permits");
-  const insp = useApi<Inspection[]>("/inspections");
+  const permits = useFresh<Permits>("/permits");
+  const insp = useFresh<Inspections>("/inspections");
   const [city, setCity] = useState("all");
   const [view, setView] = useState<(typeof views)[number][0]>("all");
 
   for (const r of [permits.res, insp.res]) if (r && !r.ok && r.signedOut) return <SignedOut />;
-  if (!permits.res || !insp.res) return <Loading />;
-  if (!permits.res.ok) return <Problem message={permits.res.message} retry={permits.reload} />;
-  const list = permits.res.data;
-  const inspections = insp.res.ok ? insp.res.data : [];
+  if (!permits.res) return <Loading slow />;
+  if (!permits.res.ok) return <Problem message={permits.res.message} retry={permits.refresh} />;
+  const list = permits.res.data.permits;
+  const inspections = insp.res?.ok ? insp.res.data.inspections : [];
+  const at = [permits.res.data.fetchedAt, insp.res?.ok ? insp.res.data.fetchedAt : null].filter((x): x is string => !!x).sort()[0] ?? null;
+  const refreshError = permits.res.data.refreshError ?? (insp.res?.ok ? insp.res.data.refreshError : undefined);
+  const refresh = () => { permits.refresh(); insp.refresh(); };
   const cityName = (id: string) => me.connections.find((c) => c.id === id)?.name ?? id;
 
   const open = list.filter((p) => !CLOSED.includes(p.status));
@@ -75,7 +78,9 @@ function Board({ me }: { me: Me }) {
   ];
 
   return (
-    <div className="mt-10 space-y-14">
+    <div className="mt-8 space-y-14">
+      <div className="space-y-4">
+      <Freshness at={at} busy={permits.busy || insp.busy} error={refreshError} onRefresh={refresh} />
       <section aria-label="Summary" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {tiles.map(([label, n, hot]) => (
           <div key={label} className="rounded-2xl border border-line bg-panel p-5">
@@ -86,6 +91,7 @@ function Board({ me }: { me: Me }) {
           </div>
         ))}
       </section>
+      </div>
 
       <section aria-labelledby="permits" className="min-w-0">
         <h2 id="permits" className="text-2xl font-semibold tracking-tight">Permits <span className="text-ink-3">{list.length}</span></h2>
@@ -120,14 +126,14 @@ function Board({ me }: { me: Me }) {
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <Timeline inspections={inspections} permits={list} failed={!insp.res.ok} />
+        <Timeline inspections={inspections} permits={list} failed={insp.res?.ok === false} loading={!insp.res} />
         <AskClaude prompts={["Which permits need me this week?", "What does the city want fixed on my electrical permit?", "What fees do I owe the city?"]} />
       </div>
     </div>
   );
 }
 
-function Timeline({ inspections, permits, failed }: { inspections: Inspection[]; permits: Permit[]; failed: boolean }) {
+function Timeline({ inspections, permits, failed, loading }: { inspections: Inspection[]; permits: Permit[]; failed: boolean; loading: boolean }) {
   const dated = (i: Inspection) => (i.scheduledFor ? daysFrom(i.scheduledFor) : null);
   const upcoming = inspections
     .filter((i) => (i.status === "needed" || i.status === "scheduled") && (dated(i) ?? 0) >= 0)
@@ -170,10 +176,12 @@ function Timeline({ inspections, permits, failed }: { inspections: Inspection[];
     <section aria-labelledby="insp" className="min-w-0">
       <h2 id="insp" className="text-2xl font-semibold tracking-tight">Inspections</h2>
       {failed && <p className="mt-2 text-ink-2">We couldn't load inspections right now.</p>}
+      {loading ? <p className="mt-5 rounded-2xl border border-line bg-panel p-5 text-ink-2" role="status">Reading inspections from the city portal. The first time takes about a minute.</p> : (
       <div className="mt-5 space-y-6">
         {block("Coming up", upcoming, "Nothing booked yet.")}
         {block("Recent", recent, "No past inspections.")}
       </div>
+      )}
     </section>
   );
 }
