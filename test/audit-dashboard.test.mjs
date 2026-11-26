@@ -29,10 +29,12 @@ test('dashboard: Claude hands out a one-time link, session reads and connects, t
       await c.close();
       return text.match(/https?:\/\/\S+/)[0];
     };
+    let lastNext = '';
     const session = async (l) => {
       const r = await fetch(l, { redirect: 'manual' });
       assert.equal(r.status, 302);
-      assert.equal(r.headers.get('location'), '/dashboard');
+      assert.match(r.headers.get('location'), /^\/dashboard/);
+      lastNext = r.headers.get('location');
       const set = r.headers.get('set-cookie');
       assert.match(set, /HttpOnly/);
       return set.split(';')[0];
@@ -43,6 +45,7 @@ test('dashboard: Claude hands out a one-time link, session reads and connects, t
     assert.equal((await fetch(host + '/api/me')).status, 401, 'no cookie, no data');
     const linkA = await link(a);
     const ckA = await session(linkA);
+    assert.equal(lastNext, '/dashboard/connect?city=phoenix-az', 'nothing connected: link opens the connect form');
     assert.equal((await fetch(linkA, { redirect: 'manual' })).status, 401, 'link is single use');
     assert.equal((await fetch(host + '/auth/claim?t=junk')).status, 401);
 

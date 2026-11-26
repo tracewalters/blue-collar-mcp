@@ -14,7 +14,8 @@ const input = "mt-2 block min-h-12 w-full rounded-xl border border-line bg-panel
 function Body({ me, reload }: { me: Me; reload: () => void }) {
   const connected = new Set(me.connections.map((c) => c.id));
   const choices = me.cities.filter((c) => !connected.has(c.id));
-  const [pick, setPick] = useState(choices.find(isBuilt)?.id ?? choices[0]?.id ?? "");
+  const asked = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("city");
+  const [pick, setPick] = useState(choices.find((c) => c.id === asked)?.id ?? choices.find(isBuilt)?.id ?? choices[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const city = me.cities.find((c) => c.id === pick);
@@ -25,13 +26,13 @@ function Body({ me, reload }: { me: Me; reload: () => void }) {
     setBusy(true); setMsg("");
     const r = await api("/connect", { city: pick, username: f.get("username"), password: f.get("password") });
     setBusy(false);
-    if (r.ok) reload(); else setMsg(r.signedOut ? "You were signed out. Ask Claude to open your dashboard again." : r.message);
+    if (r.ok) window.location.assign("/dashboard"); else setMsg(r.signedOut ? "You were signed out. Ask Claude to open your dashboard again." : r.message);
   };
   const drop = async (id: string) => {
     setBusy(true);
     const r = await api("/disconnect", { city: id });
     setBusy(false);
-    if (r.ok) reload(); else setMsg(r.message);
+    if (r.ok) window.location.assign("/dashboard"); else setMsg(r.message);
   };
 
   return (

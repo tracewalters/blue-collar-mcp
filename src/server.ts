@@ -10,6 +10,8 @@ import { z } from "zod";
 import { BRAIN_INSTRUCTIONS, registerBrain } from "./brain/tools.ts";
 import { requestInfo } from "./brain/notes.ts";
 import { registerIngest } from "./brain/ingest-tools.ts";
+import { getAdapter } from "./adapter.ts";
+import "./adapters/index.ts";
 import { listJurisdictions } from "./jurisdictions.ts";
 import { registerPermits } from "./permit-tools.ts";
 import * as svc from "./service.ts";
@@ -79,7 +81,7 @@ const check = (token: string | undefined, kind: string) => {
 const used = new Map<string, number>();
 const GRACE_MS = Number(process.env.BCMCP_CLAIM_GRACE_MS ?? 120_000);
 const SESSION_MS = 30 * 864e5;
-export const dashboardLink = (tenant: string, base: string) => `${base}/auth/claim?t=${mint(tenant, 10 * 60_000, "claim", randomBytes(8).toString("hex"))}`;
+export const dashboardLink = (tenant: string, base: string, next = "/dashboard") => `${base}/auth/claim?t=${mint(tenant, 10 * 60_000, "claim", randomBytes(8).toString("hex"))}&next=${encodeURIComponent(next)}`;
 
 const cookie = (req: IncomingMessage) => Object.fromEntries((req.headers.cookie ?? "").split(/;\s*/).map((c) => c.split("=") as [string, string]));
 const json = (res: ServerResponse, code: number, data: unknown) => { res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(data)); };
@@ -119,10 +121,11 @@ const handle = async (req: IncomingMessage, res: ServerResponse) => {
   if (url.startsWith("/api/")) return api(req, res, url.slice(4).split("?")[0]);
 
   if (url.startsWith("/auth/claim")) {
-    const t = check(new URL(url, base).searchParams.get("t") ?? "", "claim");
+    const q = new URL(url, base).searchParams, t = check(q.get("t") ?? "", "claim");
+    const next = /^\/dashboard[\w/?=&.%-]*$/.test(q.get("next") ?? "") ? q.get("next")! : "/dashboard"; // only our own dashboard pages
     if (!t || (used.has(t.nonce) && Date.now() - used.get(t.nonce)! > GRACE_MS) || !tenantByHash(t.tenant)) { res.writeHead(401, { "content-type": "text/plain" }).end("This link expired or was already used. Ask Claude to open your dashboard again."); return; }
     if (!used.has(t.nonce)) used.set(t.nonce, Date.now());
-    res.writeHead(302, { location: "/dashboard", "set-cookie": `bc_session=${mint(t.tenant, SESSION_MS, "sess")}; Path=/; Max-Age=${SESSION_MS / 1000}; HttpOnly; Secure; SameSite=Lax` }).end();
+    res.writeHead(302, { location: next, "set-cookie": `bc_session=${mint(t.tenant, SESSION_MS, "sess")}; Path=/; Max-Age=${SESSION_MS / 1000}; HttpOnly; Secure; SameSite=Lax` }).end();
     return;
   }
 
@@ -142,9 +145,17 @@ const handle = async (req: IncomingMessage, res: ServerResponse) => {
   const dash = `${base}`;
   registerPermits(server, { writes: false, connectHint: "call open_dashboard and tell the user to connect their city portal there." });
   server.registerTool("open_dashboard", {
-    description: "Give the user a private link (valid 10 minutes, one use) to their permit dashboard on the website, where they connect city portals and see permits laid out nicely.",
+    description: "Give the user a private link (valid 10 minutes) to their permit dashboard. If no city portal is connected yet, or `city` is given, the link opens straight to the connect form for that city (login is typed there, never in chat). Say only: the link, and one line on what they will see.",
+    inputSchema: { city: z.string().optional().describe("City id to connect, e.g. phoenix-az") },
     annotations: { readOnlyHint: true },
-  }, async () => ({ content: [{ type: "text" as const, text: `Open your dashboard: ${dashboardLink(tenant.id, dash)}` }] }));
+  }, async ({ city }) => {
+    const connected = svc.listConnections().map((c) => c.id);
+    const firstReal = listJurisdictions().find((j) => { try { const a = getAdapter(j.platform); return a.maturity === "ready" && a.platform !== "demo"; } catch { return false; } })?.id;
+    const target = city ?? (connected.length ? undefined : firstReal);
+    const next = target && !connected.includes(target) ? `/dashboard/connect?city=${encodeURIComponent(target)}` : "/dashboard";
+    const where = next === "/dashboard" ? "your permit dashboard" : "the page to connect your city portal";
+    return { content: [{ type: "text" as const, text: `Open ${where}: ${dashboardLink(tenant.id, dash, next)}` }] };
+  });
   if (process.env.BCMCP_BRAIN) { registerBrain(server); registerIngest(server); }
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   res.on("close", () => { transport.close(); server.close(); });
