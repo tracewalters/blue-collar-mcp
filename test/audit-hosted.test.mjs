@@ -15,7 +15,7 @@ test('built hosted MCP initializes, lists brain tools, and restricts access to p
   const { port } = probe.address();
   await new Promise((resolve, reject) => probe.close((err) => err ? reject(err) : resolve()));
   const host = 'http://127.0.0.1:' + port;
-  const env = { ...process.env, BCMCP_PUBLIC_URL: host, BCMCP_DATA: mkdtempSync(join(tmpdir(), 'bcmcp-host-audit-')), PORT: String(port) };
+  const env = { ...process.env, BCMCP_PUBLIC_URL: host, BCMCP_DATA: mkdtempSync(join(tmpdir(), 'bcmcp-host-audit-')), BCMCP_MASTER_KEY: Buffer.alloc(32, 7).toString('base64'), PORT: String(port) };
   const entry = 'src/server.ts';
   const url = (name) => execFileSync(process.execPath, [entry, 'tenant', name], { env, encoding: 'utf8' }).trim().split('\n').at(-1);
   const a = url('Fixture A');

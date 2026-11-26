@@ -17,7 +17,8 @@ import { registerPermits } from "./permit-tools.ts";
 import { getProfile, saveProfile } from "./profile.ts";
 import { registerSetup, registerSetupForm } from "./setup-tools.ts";
 import * as svc from "./service.ts";
-import { home, tenantDir } from "./vault.ts";
+import { migrateLegacyVault } from "./store.ts";
+import { home, requireHostedMasterKey, tenantDir } from "./vault.ts";
 
 /**
  * Hosted mode. Each company gets a secret connector URL /t/<secret>/mcp for Claude, and a website
@@ -61,6 +62,14 @@ export const revokeTenant = (name: string) => {
 const tenantByHash = (id: string) => {
   const t = readTenants()[id];
   return t ? { id, name: t.name, dir: join(dataDir(), "tenants", t.folder ?? id.slice(0, 16), "brain") } : null;
+};
+
+const prepareVaults = () => {
+  requireHostedMasterKey();
+  for (const id of Object.keys(readTenants())) {
+    const tenant = tenantByHash(id);
+    if (tenant) tenantDir.run(tenant.dir, migrateLegacyVault);
+  }
 };
 
 // ---- Sessions: signed, httpOnly cookie. Claim links are one-time and short-lived.
@@ -212,6 +221,7 @@ const handle = async (req: IncomingMessage, res: ServerResponse) => {
 };
 
 if (process.argv[1]?.endsWith("server.ts") || process.argv[1]?.endsWith("server.js")) {
+  prepareVaults();
   const [cmd, ...rest] = process.argv.slice(2);
   const pub = process.env.BCMCP_PUBLIC_URL ?? "https://YOUR-DOMAIN";
   if (cmd === "tenant") { const name = rest.join(" ") || "Company"; console.log(`Connector URL for ${name} (shown once, treat like a password):\n${pub}/t/${createTenant(name)}/mcp`); }
