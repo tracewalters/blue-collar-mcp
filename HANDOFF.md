@@ -44,6 +44,9 @@ Key design rules: one adapter per portal platform, API first, writes two-phase (
 ## GitHub access
 `gh` is logged in on the VPS as `tracewalters` (shared home folder, so every thread has it). Token expires; if pushes fail, ask Trace to renew via the secure form. Local branch naming: work on a branch, open a PR to `main`, end PR bodies with `Built with [Cloudroom](https://cloudroom.dev)`. Stacked PRs got messy: prefer one PR into `main`.
 
+## Decisions and plan
+Read `GLOSSARY.md`, `docs/SPEC.md` (36 user stories, one test seam: the running server), `docs/adr/0001-0003`, and the 18 tickets in `.scratch/permits-parity/issues/`. Build order: booking dry run (04) then booking commit (05) first, then inspector comments (01), refresh rule (02), the rest. Security and data findings and their status: `docs/SECURITY-REVIEW.md`.
+
 ## Next steps (in order)
 1. **Inspection booking on Shape PHX** (the product's core promise). Port Stanley 1.0's playbook: `/home/cloudroom-agent/stanley-build/stanley-project/scripts/bin/shapephx.py` and the SOP `rules/vault/Knowledge/sops/shapephx-cli.md` (same dir). Rules: Request button is in a scrolled datatable, click with JS; date format "Oct 26, 2026"; site contact name + phone/email required (use the company profile); refuse weekends and past dates; refuse an INS already scheduled; verify the INS appears under Scheduled after Save; cancel needs 24 h notice. Build `propose` + `commit` in `shape-phx.ts`, test with a dry run that stops before Save (press Cancel) and only do one live booking with Trace's explicit approval. In hosted mode writes need a two-step approval (see `src/brain/approval.ts` `gate` for a preview+token pattern; move it to `src/`), plus the Claude app's own tool-approval prompt.
 2. **Make the deployment permanent** (needs Trace to run root commands): systemd units for API and web, Caddy snippet.

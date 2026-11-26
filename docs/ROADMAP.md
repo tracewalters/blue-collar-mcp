@@ -17,3 +17,9 @@
 
 ## Parked (code exists, off by default)
 The company brain and ingest (`src/brain/`, enable with `BCMCP_BRAIN=1`): notes, search with stale flags, cheap ingest that keeps receipts, conflict review. Ideas for later: rules packs by trade, QuickBooks and CRM adapters, inventory and ordering (Pool Corp, Home Depot), guided setup flows, usage-based pricing (ingest credits, seats, new portal builds, automations), notetaker integrations.
+
+## Pricing (draft, needs its own session)
+Tiers by active permits, inspections booked per month, and seats. Every account starts with about 100 free credits. Read-only is free. Numbers not decided.
+
+## Direction (grill, 2026-11-26)
+Stay on permits. Goal: as good as or better than the city portal. Adapters must cover everything the portal shows (inspector comments, fees, corrections, documents, emails). Dashboard adds: recent activity feed, bird's-eye view, per-permit timeline, and job progress (is the permit trail behind the schedule?). Teams: PMs book inspections, the owner watches.
