@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { api, type Me, type Result, type Tone } from "@/lib/dash";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { ago, api, type Fresh, type Me, type Result, type Tone } from "@/lib/dash";
 import { Chip } from "@/components/ui";
 
 // Dashboard building blocks. Follows /TASTE.md: status = small dot + words.
@@ -59,8 +59,13 @@ export function Problem({ message, retry }: { message: string; retry?: () => voi
   );
 }
 
-export function Loading() {
-  return <p className="py-24 text-center text-ink-3" role="status">Loading your permits…</p>;
+export function Loading({ slow }: { slow?: boolean }) {
+  return (
+    <div className="py-24 text-center" role="status">
+      <p className="text-ink-2">Loading your permits…</p>
+      {slow && <p className="mx-auto mt-2 max-w-sm text-[15px] text-ink-3">The first read from a city portal can take about a minute. After that it's quick.</p>}
+    </div>
+  );
 }
 
 /** Loads one API path. Any 401 flips the whole page to the signed-out view. */
@@ -70,6 +75,43 @@ export function useApi<T>(path: string | null) {
   useEffect(load, [load]);
   return { res, reload: load };
 }
+
+/**
+ * Loads a portal read and keeps it fresh. The server answers at once from its cache; when it says a refresh
+ * is running, we ask our server again every few seconds until the new data lands. `refresh()` forces a portal read.
+ * Old data stays on screen the whole time.
+ */
+export function useFresh<T extends Fresh>(path: string) {
+  const [res, setRes] = useState<Result<T> | null>(null);
+  const [forcing, setForcing] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const load = useCallback(async (force = false) => {
+    clearTimeout(timer.current);
+    if (force) setForcing(true);
+    const r = await api<T>(`${path}${force ? `${path.includes("?") ? "&" : "?"}refresh=1` : ""}`);
+    setForcing(false);
+    setRes((old) => (!r.ok && old?.ok && !r.signedOut ? old : r)); // keep old data if a refresh call fails
+    if (r.ok && r.data.refreshing) timer.current = setTimeout(() => load(), 5000);
+  }, [path]);
+  useEffect(() => { load(); return () => clearTimeout(timer.current); }, [load]);
+  const busy = forcing || (res?.ok === true && res.data.refreshing);
+  return { res, busy, refresh: () => load(true) };
+}
+
+/** "Updated 4 min ago" plus the refresh button. A dark button: the page's one lime button is elsewhere. */
+export function Freshness({ at, busy, error, onRefresh }: { at: string | null; busy: boolean; error?: string; onRefresh: () => void }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p className="flex items-center gap-2 text-[15px] text-ink-2" role="status" aria-live="polite">
+        {busy ? <><Spinner />Checking the city portal…</> : at ? <>Updated {ago(at)}</> : null}
+        {!busy && error && <span className="flex items-center gap-2 text-ink-3"><span className="h-2 w-2 rounded-full bg-warn" aria-hidden />Last check failed</span>}
+      </p>
+      <button type="button" onClick={onRefresh} disabled={busy} className={darkBtn}>{busy ? "Refreshing…" : "Refresh"}</button>
+    </div>
+  );
+}
+
+export const Spinner = () => <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-white/20 border-t-white" aria-hidden />;
 
 /** Page frame: loads /api/me, handles signed-out and server-down, draws the header. */
 export function DashShell({ children, title }: { title?: ReactNode; children: (me: Me, reloadMe: () => void) => ReactNode }) {

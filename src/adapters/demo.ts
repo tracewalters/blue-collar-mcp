@@ -20,6 +20,9 @@ const inspections: Inspection[] = [
   { id: "INS-3", permitId: "ELE-2026-0388", type: "Rough Electrical", status: "failed", scheduledFor: "2026-11-12", notes: "Missing box fill labels" },
 ];
 
+// BCMCP_DEMO_DELAY_MS makes reads slow like a real Portal (tests of the refresh rule).
+const slow = () => new Promise((r) => setTimeout(r, Number(process.env.BCMCP_DEMO_DELAY_MS ?? 0)));
+
 export const demoAdapter: PortalAdapter = {
   platform: "demo",
   maturity: "demo",
@@ -28,9 +31,10 @@ export const demoAdapter: PortalAdapter = {
       ? { ok: true, session: { token: "demo-session" } }
       : { ok: false, reason: "bad_credentials", message: 'Demo login is "demo" / "demo".' };
   },
-  async listPermits() { return permits; },
+  async listPermits() { await slow(); return permits; },
   async getPermit(_j, _s, id) { return permits.find((p) => p.id === id); },
   async listInspections(_j, _s, permitId) {
+    await slow();
     const all = [...inspections, ...booked()];
     return permitId ? all.filter((i) => i.permitId === permitId) : all;
   },

@@ -80,3 +80,4 @@ Starting point: the Higgsfield MCP site (higgsfield.ai/mcp). We borrow its *prin
 - 2026-11-22: Website rebuilt on these rules. Added the mobile layout lessons.
 - 2026-11-26: Permit dashboard (`/dashboard`) built on these rules. Added status chip and problem-first notes.
 - 2026-11-26: Setup checklist (`/dashboard/connect`): one card per city, slow steps (portal login ~30 s) show a named progress state in place, success flips the card without a reload.
+- 2026-11-26: Freshness row on the dashboard and permit page: "Updated 4 min ago" on the left, a dark Refresh button on the right (never lime). While a refresh runs, old data stays on screen with "Checking the city portal…". After a city login, the card says "Go back to Claude" and shows the paste-back key as a mono pill.

@@ -26,16 +26,6 @@ const chromePath = () => {
 let chain: Promise<unknown> = Promise.resolve();
 const serial = <T>(fn: () => Promise<T>): Promise<T> => { const r = chain.then(fn, fn); chain = r.catch(() => {}); return r; };
 
-const FRESH_MS = 5 * 60_000;
-const cache = new Map<string, { at: number; data: unknown }>();
-const cached = async <T>(key: string, fn: () => Promise<T>): Promise<T> => {
-  const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < FRESH_MS) return hit.data as T;
-  const data = await fn();
-  cache.set(key, { at: Date.now(), data });
-  return data;
-};
-
 const loggedIn = async (p: Page) => /Balance:/i.test(await p.locator("body").innerText().catch(() => ""));
 
 async function dismissModals(p: Page) {
@@ -225,29 +215,23 @@ export const shapePhx: PortalAdapter = {
     } finally { await browser.close(); }
   }),
 
-  listPermits: (j, s) => cached(`p:${(s as unknown as Sess).user}`, () => withPortal(s, (p) => readPermits(p, j.id))),
+  // No cache here: src/service.ts owns freshness (ADR 0002).
+  listPermits: (j, s) => withPortal(s, (p) => readPermits(p, j.id)),
 
   getPermit: async (j, s, id) => (await shapePhx.listPermits(j, s)).find((x) => x.id.toLowerCase() === id.toLowerCase()),
 
-  async listInspections(j, s, permitId) {
-    const user = (s as unknown as Sess).user;
-    const permits = await shapePhx.listPermits(j, s);
+  /** One browser session: the permit list (already open) tells which permits can have inspections, then each one is read. */
+  listInspections: (j, s, permitId) => withPortal(s, async (p) => {
     // Only permits that can have inspections: issued or in the inspection phase, not just shared with you.
-    const ids = permitId ? [permitId] : permits.filter((x) => (x.status === "issued" || x.status === "inspection_phase") && !x.description?.startsWith("Shared with you")).map((x) => x.id);
-    const need = ids.filter((id) => !cache.has(`i:${user}:${id}`) || Date.now() - cache.get(`i:${user}:${id}`)!.at >= FRESH_MS);
-    if (need.length) {
-      // One browser session for all permits.
-      const failed: string[] = [];
-      await withPortal(s, async (p) => {
-        for (const id of need) {
-          try { cache.set(`i:${user}:${id}`, { at: Date.now(), data: await readInspections(p, id) }); }
-          catch (e) { failed.push(`${id}: ${(e as Error).message}`); }
-        }
-      });
-      if (failed.length === need.length) throw new Error(`Could not read inspections. ${failed[0]}`);
+    const ids = permitId ? [permitId] : (await readPermits(p, j.id)).filter((x) => (x.status === "issued" || x.status === "inspection_phase") && !x.description?.startsWith("Shared with you")).map((x) => x.id);
+    const out: Inspection[] = [], failed: string[] = [];
+    for (const id of ids) {
+      try { out.push(...await readInspections(p, id)); }
+      catch (e) { failed.push(`${id}: ${(e as Error).message}`); }
     }
-    return ids.flatMap((id) => (cache.get(`i:${user}:${id}`)?.data as Inspection[] | undefined) ?? []);
-  },
+    if (ids.length && failed.length === ids.length) throw new Error(`Could not read inspections. ${failed[0]}`);
+    return out;
+  }),
 
   async proposeInspection() { throw new Error("Booking inspections on Shape PHX is not enabled yet."); },
   async commit() { throw new Error("Booking inspections on Shape PHX is not enabled yet."); },

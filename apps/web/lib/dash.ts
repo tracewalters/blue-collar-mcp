@@ -18,6 +18,20 @@ export interface Profile {
 }
 export interface Me { company: string; userName?: string; profile: Profile | null; connections: Connection[]; cities: City[] }
 
+/** Every read says when the city portal was last checked (ADR 0002: refresh on open when older than ~15 min). */
+export interface Fresh { fetchedAt: string | null; ageMinutes: number | null; refreshing: boolean; refreshError?: string }
+export type Permits = Fresh & { permits: Permit[] };
+export type Inspections = Fresh & { inspections: Inspection[] };
+
+/** "just now", "4 min ago", "2 h ago", "Nov 24". */
+export const ago = (iso: string) => {
+  const m = Math.floor((Date.now() - Date.parse(iso)) / 60_000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
+  if (m < 24 * 60) return `${Math.floor(m / 60)} h ago`;
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
+
 export type Result<T> = { ok: true; data: T } | { ok: false; signedOut: boolean; message: string };
 
 const DOWN = "We can't reach your permit server right now. Try again in a minute.";

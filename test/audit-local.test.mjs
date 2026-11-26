@@ -73,8 +73,8 @@ test('built stdio MCP lists tools and prompts and handles an approved brain writ
     assert.equal((await client.getPrompt({ name: 'brain-setup' })).messages.length, 1);
     const call = (name, args) => client.callTool({ name, arguments: args });
     assert.ok((await call('list_connections', {})).content[0].text.includes('demo-city'));
-    assert.deepEqual(JSON.parse((await call('list_permits', {})).content[0].text), []);
-    assert.deepEqual(JSON.parse((await call('list_inspections', {})).content[0].text), []);
+    assert.deepEqual(JSON.parse((await call('list_permits', {})).content[0].text).permits, []);
+    assert.deepEqual(JSON.parse((await call('list_inspections', {})).content[0].text).inspections, []);
     assert.equal((await call('get_permit', {city:'demo-city', permitId: 'x'})).isError, true);
     assert.equal((await call('propose_inspection', {city:'demo-city', permitId:'x', type:'Frame', date:'2026-12-01'})).isError, true);
     assert.equal((await call('commit_action', {token:'unknown'})).isError, true);
@@ -87,12 +87,12 @@ test('built stdio MCP lists tools and prompts and handles an approved brain writ
     const cities = JSON.parse(ok(cli(env, ['cities', '--json'])));
     const demo = cities.findIndex(city => city.id === 'demo-city') + 1;
     ok(cli(env, ['login'], demo + '\ndemo\ndemo\n'));
-    const before = JSON.parse((await call('list_inspections', {})).content[0].text).length;
+    const before = JSON.parse((await call('list_inspections', {})).content[0].text).inspections.length;
     const proposed = await call('propose_inspection', {city:'demo-city', permitId:'BLD-2026-0142', type:'Framing', date:'2026-12-01'});
     const {token} = JSON.parse(proposed.content[0].text);
-    assert.equal(JSON.parse((await call('list_inspections', {})).content[0].text).length, before);
+    assert.equal(JSON.parse((await call('list_inspections', {})).content[0].text).inspections.length, before);
     assert.equal(JSON.parse((await call('commit_action', {token})).content[0].text).ok, true);
-    assert.equal(JSON.parse((await call('list_inspections', {})).content[0].text).length, before + 1);
+    assert.equal(JSON.parse((await call('list_inspections', {})).content[0].text).inspections.length, before + 1);
     assert.equal((await call('commit_action', {token})).isError, true);
   } finally {
     await client.close();

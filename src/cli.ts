@@ -81,9 +81,9 @@ async function main() {
     case "logout": svc.logout(a); return console.log("Removed.");
     case "cities": { const c = listJurisdictions(); return out(c, table(c.map((x) => ({ id: x.id, name: `${x.name}, ${x.state}`, platform: x.platform })))); }
     case "connections": { const c = svc.listConnections(); return out(c, table(c)); }
-    case "permits": { const p = await svc.listPermits(flag("city")); return out(p, table(p.map((x) => ({ id: x.id, type: x.type, address: x.address, status: x.status })))); }
+    case "permits": { const { permits: p } = await svc.listPermits(flag("city")); return out(p, table(p.map((x) => ({ id: x.id, type: x.type, address: x.address, status: x.status })))); }
     case "permit": { const r = await svc.getPermit(a, b); return out(r, JSON.stringify(r, null, 2)); }
-    case "inspections": { const i = await svc.listInspections(flag("city")); return out(i, table(i.map((x) => ({ id: x.id, permit: x.permitId, type: x.type, status: x.status })))); }
+    case "inspections": { const { inspections: i } = await svc.listInspections(flag("city")); return out(i, table(i.map((x) => ({ id: x.id, permit: x.permitId, type: x.type, status: x.status })))); }
     case "schedule": {
       const type = flag("type"), date = flag("date");
       if (!type || !date) throw new Error("--type and --date are required");

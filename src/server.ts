@@ -121,14 +121,15 @@ const api = async (req: IncomingMessage, res: ServerResponse, path: string) => {
         const cities = cur.cities.filter((c) => c !== b.removeCity).concat(b.addCity ? [b.addCity] : []);
         return json(res, 200, saveProfile({ cities }));
       }
-      if (path === "/permits") return json(res, 200, await svc.listPermits(q.get("city") ?? undefined));
-      if (path === "/inspections") return json(res, 200, await svc.listInspections(q.get("city") ?? undefined));
-      if (path === "/permit") return json(res, 200, await svc.getPermit(q.get("city")!, q.get("id")!));
+      const refresh = q.get("refresh") === "1";
+      if (path === "/permits") return json(res, 200, await svc.listPermits(q.get("city") ?? undefined, { refresh }));
+      if (path === "/inspections") return json(res, 200, await svc.listInspections(q.get("city") ?? undefined, { refresh }));
+      if (path === "/permit") return json(res, 200, await svc.getPermit(q.get("city")!, q.get("id")!, { refresh }));
       if (path === "/connect" && req.method === "POST") {
         if (tooMany(tenant.id)) return json(res, 429, { error: "Too many tries. Wait a minute." });
         const b = z.object({ city: z.string(), username: z.string().min(1), password: z.string().min(1) }).parse(await body(req));
         const r = await svc.login(b.city, { username: b.username, password: b.password });
-        return json(res, r.ok ? 200 : 400, r.ok ? { ok: true } : { ok: false, message: (r as { message?: string }).message ?? "Login failed." });
+        return json(res, r.ok ? 200 : 400, r.ok ? { ok: true, key: svc.issueConnectKey(b.city) } : { ok: false, message: (r as { message?: string }).message ?? "Login failed." });
       }
       if (path === "/disconnect" && req.method === "POST") { svc.logout(z.object({ city: z.string() }).parse(await body(req)).city); return json(res, 200, { ok: true }); }
       if (path === "/signout" && req.method === "POST") { res.setHeader("set-cookie", "bc_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax"); return json(res, 200, { ok: true }); }
@@ -160,7 +161,8 @@ const buildServer = (tenant: { id: string }, dash: string) => {
     const target = city ?? (profile ? pending[0] : connected.length ? undefined : firstReal);
     const next = target && !connected.includes(target) ? `/dashboard/connect?city=${encodeURIComponent(target)}` : "/dashboard";
     const where = next === "/dashboard" ? "your permit dashboard" : `the page to connect ${pending.length > 1 ? "your cities" : "your city portal"}`;
-    return { content: [{ type: "text" as const, text: `Open ${where}: ${dashboardLink(tenant.id, dash, next)}` }] };
+    const after = next === "/dashboard" ? "" : "\n(For you, not the user: after they sign in there, call list_connections to see it connected. If they paste a key like ABCD-1234, pass it as key.)";
+    return { content: [{ type: "text" as const, text: `Open ${where}: ${dashboardLink(tenant.id, dash, next)}${after}` }] };
   });
   if (process.env.BCMCP_BRAIN) { registerBrain(server); registerIngest(server); }
   return server;
