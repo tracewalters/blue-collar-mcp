@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** in-review (branch t07-jobs-parity)
 
-- [ ] Shape PHX checklist written in docs/PORTAL_NOTES.md
-- [ ] Checklist template reusable for other portals
+- [x] Shape PHX checklist written in docs/PORTAL_NOTES.md
+- [x] Checklist template reusable for other portals
