@@ -15,7 +15,7 @@ test('setup form: clients that can show forms get a real form, others get a text
   await once(probe, 'listening');
   const { port } = probe.address();
   await new Promise((r) => probe.close(r));
-  const env = { ...process.env, BCMCP_PUBLIC_URL: 'http://127.0.0.1:' + port, BCMCP_DATA: mkdtempSync(join(tmpdir(), 'bc-form-')), PORT: String(port) };
+  const env = { ...process.env, BCMCP_PUBLIC_URL: 'http://127.0.0.1:' + port, BCMCP_DATA: mkdtempSync(join(tmpdir(), 'bc-form-')), BCMCP_MASTER_KEY: Buffer.alloc(32, 7).toString('base64'), PORT: String(port) };
   const url = execFileSync(process.execPath, ['src/server.ts', 'tenant', 'F'], { env, encoding: 'utf8' }).trim().split('\n').at(-1);
   const proc = spawn(process.execPath, ['src/server.ts'], { env, stdio: ['ignore', 'pipe', 'inherit'] });
   const stop = once(proc, 'exit');
