@@ -32,13 +32,14 @@ Key design rules: one adapter per portal platform, API first, writes two-phase (
 - Clients that advertise MCP **elicitation** get a stateful session (so the form answer finds its tool call); all others stay stateless. Don't break the stateless path.
 - Brain tools are off unless `BCMCP_BRAIN=1`.
 
-## Where it runs (Hostinger VPS, user `cloudroom-agent`, no root)
-- Deployed worktree: `/home/cloudroom-agent/bcmcp-run` (detached git checkout; `git fetch && git checkout --detach origin/<branch>`). Data: `/home/cloudroom-agent/bcmcp-data` (tenants, `session.key`, logs, Caddy config backups). **Never commit or print anything in there.**
-- API on `127.0.0.1:3300` (`run.sh`), website on `127.0.0.1:3301` (`web.sh`, `next start`). Restart both with `/home/cloudroom-agent/bcmcp-run/restart.sh`. After pulling web changes run `cd apps/web && npx next build` BEFORE restart. (A stale `next start` from an old build caused "This page couldn't load"; restart.sh kills by working directory.)
-- Caddy (shared with Stanley, serves `stanley.waltreno.systems`) has a route for host `mcp.waltreno.systems`: `/t/*`, `/auth/*`, `/api/*` -> 3300, everything else -> 3301. It was added through the Caddy admin API (`localhost:2019`), so it is **not persistent** across a Caddy restart or reboot, and the node processes are not systemd services either. Needs root to make permanent (Caddyfile snippet + two systemd units). Backups: `bcmcp-data/caddy-config-backup*.json`. Do not touch the Stanley route.
-- DNS: `mcp.waltreno.systems` A record at Hostinger points to `82.180.137.78`.
-- Chromium for Playwright is in `~/.cache/ms-playwright` (auto-detected, or set `PLAYWRIGHT_CHROMIUM`).
-- Trace's Shape PHX login for testing is in `bcmcp-data/secrets/shapephx.env` (his own account). Ask him before using it, delete it when done. Secrets only via `room-cli secret request`, one per form, only after he says he's ready.
+## Where it runs (Hostinger VPS)
+- **Persistent now (systemd + Caddyfile).** Services `bcmcp-api` (127.0.0.1:3300) and `bcmcp-web` (127.0.0.1:3301), both `User=cloudroom-agent`, `Restart=always`, enabled at boot. Caddy: a `mcp.waltreno.systems` block in `/etc/caddy/Caddyfile` (`/t/* /auth/* /api/*` -> 3300, rest -> 3301). The Stanley block is untouched. Backups: `/etc/caddy/Caddyfile.bak-bcmcp-*`.
+- **Root access:** none in the agent sandbox. Use the Mac relay: `room-cli mac run 'ssh -o BatchMode=yes -i ~/.ssh/stanley_vps stanley@100.103.126.68 "sudo ..."'` (Tailscale, Trace's Mac must be on). For longer scripts pass them base64-encoded into `sudo bash`.
+- **Master key:** `/etc/bcmcp/bcmcp.env` (root, 0600, read by systemd; the agent user cannot read it). It holds `BCMCP_MASTER_KEY`, `BCMCP_DATA`, `BCMCP_PUBLIC_URL`, `PORT`, `BCMCP_DEBUG_DIR`. Losing it makes every stored portal login unreadable, so keep a copy somewhere safe (Trace has none yet: tell him to store it).
+- **Deploy:** `cd /home/cloudroom-agent/bcmcp-run && git fetch && git checkout --detach origin/main`, then `cd apps/web && npx next build` (only if web changed), then `sudo systemctl restart bcmcp-api bcmcp-web` through the relay. Never leave a stale `next start` running by hand: it takes the port and serves a mismatched build. Always branch from `origin/main`, not a stale local `main`.
+- Data: `/home/cloudroom-agent/bcmcp-data` (tenants, backups, debug screenshots, session key). **Never commit or print anything in there.** Debug: failed Shape PHX sign-ins drop a screenshot in `bcmcp-data/debug/`; server logs are `journalctl -u bcmcp-api`.
+- DNS: `mcp.waltreno.systems` A record at Hostinger -> `82.180.137.78`. Chromium for Playwright is in `~/.cache/ms-playwright`.
+- Shape PHX allows effectively one live session per account: logging in from tests can invalidate the stored session of the real user, and the adapter then signs in again (about 25 s). Don't run test logins against Trace's account while he is using it.
 
 ## GitHub access
 `gh` is logged in on the VPS as `tracewalters` (shared home folder, so every thread has it). Token expires; if pushes fail, ask Trace to renew via the secure form. Local branch naming: work on a branch, open a PR to `main`, end PR bodies with `Built with [Cloudroom](https://cloudroom.dev)`. Stacked PRs got messy: prefer one PR into `main`.
