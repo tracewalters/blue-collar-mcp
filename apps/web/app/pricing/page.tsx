@@ -14,7 +14,7 @@ const faq = [
 export default function Pricing() {
   return (
     <>
-      <PageHeader title="Free to start." accent="Pay as you grow." sub="Start with the brain, rules, and permits at no cost. Pay only for what you use." />
+      <PageHeader title="Free to start." accent="Pay as you grow." sub="Permits are free to start. Pay only for what you use." />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.5fr]">
         <div className="relative overflow-hidden rounded-3xl border border-lime/40 bg-panel p-8">
