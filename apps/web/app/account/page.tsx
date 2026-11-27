@@ -32,7 +32,12 @@ function Connector() {
   const [url, setUrl] = useState("");
   const [copied, setCopied] = useState(false);
   const [err, setErr] = useState("");
-  useEffect(() => { const u = sessionStorage.getItem("bc-connector"); if (u) setUrl(u); }, []);
+  useEffect(() => {
+    const u = sessionStorage.getItem("bc-connector");
+    if (u) { setUrl(u); return; }
+    // Just signed up with Google: nothing is connected yet, so make the first link now.
+    if (new URLSearchParams(window.location.search).get("welcome")) api<{ connectorUrl: string }>("/connector/reset", {}).then((r) => { if (r.ok) { sessionStorage.setItem("bc-connector", r.data.connectorUrl); setUrl(r.data.connectorUrl); window.history.replaceState(null, "", "/account"); } });
+  }, []);
   const reset = async () => {
     if (!window.confirm("Make a new link? The old one stops working, so you will need to add the new one to Claude.")) return;
     setErr("");

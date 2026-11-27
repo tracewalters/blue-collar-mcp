@@ -245,6 +245,39 @@ const handle = async (req: IncomingMessage, res: ServerResponse) => {
     } catch (e) { return json(res, 400, { error: e instanceof z.ZodError ? e.issues[0].message : (e as Error).message }); }
   }
 
+  // ---- Google sign-in (authorization code flow). Needs GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.
+  const gid = process.env.GOOGLE_CLIENT_ID, gsecret = process.env.GOOGLE_CLIENT_SECRET;
+  if (url === "/auth/config") return json(res, 200, { google: !!(gid && gsecret) });
+  if (url === "/auth/google" && gid && gsecret) {
+    if (tooMany(`auth:${req.headers["x-forwarded-for"] ?? req.socket.remoteAddress}`)) return json(res, 429, { error: "Too many tries. Wait a minute." });
+    const state = randomBytes(16).toString("hex");
+    const q = new URLSearchParams({ client_id: gid, redirect_uri: `${base}/auth/google/callback`, response_type: "code", scope: "openid email profile", state, prompt: "select_account" });
+    res.writeHead(302, { location: `${process.env.BCMCP_GOOGLE_AUTH_URL ?? "https://accounts.google.com/o/oauth2/v2/auth"}?${q}`, "set-cookie": `bc_oauth=${state}; Path=/auth; Max-Age=600; HttpOnly; Secure; SameSite=Lax` }).end();
+    return;
+  }
+  if (url.startsWith("/auth/google/callback") && gid && gsecret) {
+    const fail = () => res.writeHead(302, { location: "/signin?error=google" }).end();
+    try {
+      const q = new URL(url, base).searchParams;
+      if (!q.get("code") || !q.get("state") || q.get("state") !== cookie(req).bc_oauth) return fail();
+      const r = await fetch(process.env.BCMCP_GOOGLE_TOKEN_URL ?? "https://oauth2.googleapis.com/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ code: q.get("code")!, client_id: gid, client_secret: gsecret, redirect_uri: `${base}/auth/google/callback`, grant_type: "authorization_code" }) });
+      const tok = (await r.json()) as { id_token?: string };
+      if (!r.ok || !tok.id_token) return fail();
+      // The id_token came straight from Google over TLS in exchange for our secret, so its claims can be trusted.
+      const c = JSON.parse(Buffer.from(tok.id_token.split(".")[1], "base64url").toString()) as { email?: string; email_verified?: boolean; name?: string; aud?: string };
+      if (!c.email || c.email_verified !== true || c.aud !== gid) return fail();
+      const email = c.email.toLowerCase(), a = readAccounts();
+      let tenant = a[email]?.tenant, fresh = false;
+      if (!tenant || !tenantByHash(tenant)) {
+        const secret = createTenant((c.name || email.split("@")[0]).slice(0, 80));
+        tenant = hash(secret); fresh = true;
+        addAccount(email, randomBytes(24).toString("hex"), tenant); // nobody knows this password; Google is the way in
+      }
+      res.writeHead(302, { location: fresh ? "/account?welcome=1" : "/dashboard", "set-cookie": [sessionCookie(tenant), "bc_oauth=; Path=/auth; Max-Age=0"] }).end();
+    } catch { fail(); }
+    return;
+  }
+
   if (url.startsWith("/auth/claim")) {
     const q = new URL(url, base).searchParams, t = check(q.get("t") ?? "", "claim");
     const next = /^\/dashboard[\w/?=&.%-]*$/.test(q.get("next") ?? "") ? q.get("next")! : "/dashboard"; // only our own dashboard pages
