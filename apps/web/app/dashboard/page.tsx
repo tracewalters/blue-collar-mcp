@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import { AskClaude, DashShell, Freshness, Loading, Note, Pill, Problem, SignedOut, StatusChip, limeBtn, useBoard } from "@/components/Dash";
-import { CLOSED, daysFrom, fmtDay, inspLabel, money, permitHref, permitLabel, problem, type Inspection, type Me, type Permit } from "@/lib/dash";
+import { CLOSED, daysFrom, fmtDay, inspLabel, isRecent, lastActivity, money, permitHref, permitLabel, problem, type Inspection, type Me, type Permit } from "@/lib/dash";
 
-const views = [["all", "All"], ["action", "Needs you"], ["open", "Open"], ["closed", "Closed"]] as const;
+const views = [["recent", "Recent"], ["action", "Needs you"], ["open", "Open"], ["older", "Older"], ["all", "All"]] as const;
 
 export default function Dashboard() {
   return (
@@ -28,7 +28,7 @@ function NoCities() {
 function Board({ me }: { me: Me }) {
   const board = useBoard();
   const [city, setCity] = useState("all");
-  const [view, setView] = useState<(typeof views)[number][0]>("all");
+  const [view, setView] = useState<(typeof views)[number][0]>("recent");
 
   if (board.signedOut) return <SignedOut />;
   if (!board.res) return <Loading slow />;
@@ -42,10 +42,10 @@ function Board({ me }: { me: Me }) {
   const fees = list.reduce((s, p) => s + (p.feesDue ?? 0), 0);
 
   const ranked = list
-    .map((p) => ({ p, x: problem(p, inspections) }))
+    .map((p) => ({ p, x: problem(p, inspections), last: lastActivity(p, inspections) }))
     .filter(({ p }) => city === "all" || p.jurisdiction === city)
-    .filter(({ p, x }) => view === "all" || (view === "action" ? x.rank < 9 : view === "open" ? !CLOSED.includes(p.status) : CLOSED.includes(p.status)))
-    .sort((a, b) => a.x.rank - b.x.rank || (b.p.appliedAt ?? "").localeCompare(a.p.appliedAt ?? ""));
+    .filter(({ p, x, last }) => view === "all" || (view === "recent" ? isRecent(last) : view === "older" ? !isRecent(last) : view === "action" ? x.rank < 9 : !CLOSED.includes(p.status)))
+    .sort((a, b) => b.last.localeCompare(a.last) || a.x.rank - b.x.rank);
 
   const tiles: [string, string, boolean][] = [
     ["Open permits", String(open.length), false],
@@ -72,7 +72,7 @@ function Board({ me }: { me: Me }) {
 
       <section aria-labelledby="permits" className="min-w-0">
         <h2 id="permits" className="text-2xl font-semibold tracking-tight">Permits <span className="text-ink-3">{list.length}</span></h2>
-        <p className="mt-1 text-ink-2">Problems first. Tap a permit for the full story.</p>
+        <p className="mt-1 text-ink-2">Most recent first. Anything quiet for 3 months is under Older.</p>
         <div className="no-scrollbar -mx-1 mt-5 flex gap-1 overflow-x-auto px-1">
           {views.map(([v, l]) => <Pill key={v} active={view === v} onClick={() => setView(v)}>{l}</Pill>)}
         </div>
@@ -84,7 +84,7 @@ function Board({ me }: { me: Me }) {
         )}
         <ul className="mt-4 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-panel">
           {ranked.length === 0 && <li className="p-6 text-ink-2">Nothing here. Try another filter.</li>}
-          {ranked.map(({ p, x }) => {
+          {ranked.map(({ p, x, last }) => {
             const [label, tone] = permitLabel[p.status];
             return (
               <li key={`${p.jurisdiction}|${p.id}`}>
@@ -94,7 +94,10 @@ function Board({ me }: { me: Me }) {
                     <p className="mt-0.5 text-[15px] text-ink-2">{p.type} · <span className="font-mono text-sm">{p.id}</span> · {cityName(p.jurisdiction)}</p>
                     {x.why && x.tone && <div className="mt-2"><Note tone={x.tone}>{x.why}</Note></div>}
                   </div>
-                  <StatusChip label={label} tone={tone} />
+                  <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-1">
+                    <StatusChip label={label} tone={tone} />
+                    {last && <span className="text-sm text-ink-3">{fmtDay(last).replace(/, \d{4}$/, "")}</span>}
+                  </div>
                 </Link>
               </li>
             );
