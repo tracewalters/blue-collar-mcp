@@ -27,6 +27,8 @@ export const Inspection = z.object({
   status: z.enum(["needed", "scheduled", "completed", "passed", "failed", "cancelled"]),
   scheduledFor: z.string().optional(),
   notes: z.string().optional(),
+  /** The inspector's comments on a passed or failed inspection. Only filled by getInspection (slow on real portals). */
+  comments: z.string().optional(),
 });
 export type Inspection = z.infer<typeof Inspection>;
 
@@ -45,5 +47,7 @@ export const Plan = z.object({
   connectionId: z.string(),
   summary: z.string(),
   params: z.record(z.string(), z.unknown()),
+  /** The form fields as filled in on the portal, read back before stopping. */
+  preview: z.record(z.string(), z.string()).optional(),
 });
 export type Plan = z.infer<typeof Plan>;

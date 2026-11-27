@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] Password goes only to the vault, never into chat
-- [ ] Agent can poll connection status
-- [ ] Fallback key is short-lived and single-use
+- [x] Password goes only to the vault, never into chat
+- [x] Agent can poll connection status
+- [x] Fallback key is short-lived and single-use

@@ -2,7 +2,8 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright-core";
-import type { Credentials, PortalAdapter, Session } from "../adapter.ts";
+import { portalDate, type Credentials, type InspectionRequest, type PortalAdapter, type Session } from "../adapter.ts";
+import type { Plan } from "../schemas.ts";
 import type { Inspection, Permit } from "../schemas.ts";
 import { home } from "../vault.ts";
 
@@ -10,7 +11,7 @@ import { home } from "../vault.ts";
  * City of Phoenix SHAPE PHX (Salesforce/Clariti). No API exists, so this drives a real headless browser
  * signed in as the user. Lessons from Stanley 1.0 (vault Knowledge/sops/shapephx-cli.md) are baked in:
  * dismiss the whatfix "Alright!" modal, click Login with JS, sign in on the Microsoft B2C page, click
- * lightning controls with JS. Reads only here; booking is gated in propose/commit.
+ * lightning controls with JS. Booking is a dry run only: fill the Request form, read it back, press Cancel.
  */
 const BASE = "https://shapephx.phoenix.gov";
 type Sess = { state: unknown; user: string; pass: string };
@@ -25,16 +26,6 @@ const chromePath = () => {
 // One browser session at a time per process: the portal dislikes parallel logins.
 let chain: Promise<unknown> = Promise.resolve();
 const serial = <T>(fn: () => Promise<T>): Promise<T> => { const r = chain.then(fn, fn); chain = r.catch(() => {}); return r; };
-
-const FRESH_MS = 5 * 60_000;
-const cache = new Map<string, { at: number; data: unknown }>();
-const cached = async <T>(key: string, fn: () => Promise<T>): Promise<T> => {
-  const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < FRESH_MS) return hit.data as T;
-  const data = await fn();
-  cache.set(key, { at: Date.now(), data });
-  return data;
-};
 
 const loggedIn = async (p: Page) => /Balance:/i.test(await p.locator("body").innerText().catch(() => ""));
 
@@ -208,9 +199,172 @@ async function readInspections(p: Page, permitId: string): Promise<Inspection[]>
   return out;
 }
 
+// ---- booking dry run (Stanley's `request-inspection --stop-before-save`). UNVERIFIED in this codebase: no test login yet.
+// The Request button sits in a scrolled lightning-datatable and modal inputs live in shadow DOM, so every click,
+// focus and read goes through JS with a shadow-DOM-aware query (window.__all). Typing uses the real keyboard.
+const DEEP_ALL = "window.__all=function a(root,sel,out){out=out||[];root.querySelectorAll('*').forEach(function(e){if(e.matches(sel))out.push(e);if(e.shadowRoot)a(e.shadowRoot,sel,out)});return out}";
+type Deep = (root: ParentNode, sel: string) => HTMLElement[];
+const FIELDS = { date: "SHPE_Preferred_Date__c", name: "SHPE_Site_Contact_Name__c", phone: "SHPE_Site_Contact_Phone_Number__c", email: "SHPE_Site_Contact_Email_Address__c" };
+
+const modalState = (p: Page) => p.evaluate(() => {
+  const all = (window as unknown as { __all: Deep }).__all;
+  const m = all(document, "section.slds-modal")[0];
+  if (!m) return null;
+  const inputs = all(m, "input,textarea") as (HTMLInputElement | HTMLTextAreaElement)[];
+  return {
+    values: Object.fromEntries(inputs.filter((e) => e.name).map((e) => [e.name, e.value])),
+    help: all(m, ".slds-form-element__help").map((e) => e.innerText.trim()).filter(Boolean),
+  };
+});
+
+/** Focus one modal field by its Salesforce name, replace its value by typing, then fire change. */
+async function fillField(p: Page, name: string, value: string) {
+  const found = await p.evaluate((n) => {
+    const all = (window as unknown as { __all: Deep }).__all;
+    const e = all(document, "section.slds-modal input, section.slds-modal textarea").find((x) => (x as HTMLInputElement).name === n) as HTMLInputElement | undefined;
+    if (!e) return false;
+    e.focus(); e.select?.();
+    return true;
+  }, name);
+  if (!found) throw new Error(`The Request form has no ${name} field. Shape PHX may have changed.`);
+  await p.keyboard.type(value, { delay: 20 });
+  await p.waitForTimeout(600);
+  await p.evaluate((n) => {
+    const all = (window as unknown as { __all: Deep }).__all;
+    const e = all(document, "section.slds-modal input, section.slds-modal textarea").find((x) => (x as HTMLInputElement).name === n);
+    e?.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+    e?.blur();
+  }, name);
+}
+
+/** The dry run must never risk a Save: if Cancel cannot be pressed, fail loudly. */
+async function pressModalCancel(p: Page) {
+  const pressed = await p.evaluate(() => {
+    const all = (window as unknown as { __all: Deep }).__all;
+    const modal = all(document, "section.slds-modal")[0];
+    if (!modal) return true; // nothing open
+    const b = all(modal, "button").find((x) => x.innerText.trim() === "Cancel");
+    b?.click();
+    return !!b;
+  }).catch(() => false);
+  if (!pressed) throw new Error("Could not press Cancel on the Shape PHX Request form. Close it in the portal; nothing was saved by us.");
+}
+
+async function dryRunRequest(p: Page, j: string, r: InspectionRequest): Promise<Plan> {
+  // "Already scheduled" is checked in src/service.ts before this runs.
+  const rows = await readInspections(p, r.permitId); // leaves the page on the Inspection Scheduler
+  const want = r.type.toLowerCase();
+  const open = rows.filter((i) => i.status === "needed" && (r.inspectionId ? i.id === r.inspectionId : i.type.toLowerCase() === want));
+  if (!open.length) {
+    const types = rows.filter((i) => i.status === "needed").map((i) => i.type);
+    throw new Error(`No ${r.type} inspection is open to request on ${r.permitId}.${types.length ? ` Open: ${[...new Set(types)].join(", ")}.` : ""}`);
+  }
+  if (open.length > 1) throw new Error(`${r.permitId} has ${open.length} open ${r.type} inspections (${open.map((i) => i.id).join(", ")}). Request it in the portal.`);
+  const ins = open[0];
+
+  await p.evaluate(DEEP_ALL);
+  const clicked = await p.evaluate((id) => {
+    const all = (window as unknown as { __all: Deep }).__all;
+    const tr = all(document, "tr").filter((t) => t.innerText.includes(id) && t.innerText.includes("Request"));
+    if (tr.length !== 1) return `rows:${tr.length}`;
+    if ((tr[0].innerText.match(/INS-\d+/g) ?? []).length !== 1) return "ambiguous";
+    tr[0].scrollIntoView({ block: "center" });
+    const bt = all(tr[0], "button").find((x) => x.innerText.trim() === "Request");
+    if (!bt) return "no Request button";
+    bt.click();
+    return "ok";
+  }, ins.id);
+  if (clicked !== "ok") throw new Error(`Could not open the Request form for ${ins.id} (${clicked}). Nothing was sent.`);
+
+  try {
+    let st = null;
+    for (let i = 0; i < 10 && !st; i++) { await p.waitForTimeout(1500); st = await modalState(p); }
+    if (!st) throw new Error("The Request form did not open. Nothing was sent.");
+    if (st.values.Name !== ins.id) throw new Error(`The form opened for ${st.values.Name ?? "another inspection"}, not ${ins.id}. Nothing was sent.`);
+
+    const fill: Record<string, string> = { [FIELDS.date]: portalDate(r.date), [FIELDS.name]: r.contact.name };
+    if (r.contact.phone) fill[FIELDS.phone] = r.contact.phone;
+    if (r.contact.email) fill[FIELDS.email] = r.contact.email;
+    for (const [k, v] of Object.entries(fill)) if (v) await fillField(p, k, v);
+    await p.waitForTimeout(1000);
+
+    st = await modalState(p);
+    const got = st?.values ?? {};
+    const off = Object.entries(fill).filter(([k, v]) => v && (got[k] ?? "").trim() !== v);
+    const help = (st?.help ?? []).filter((h) => /invalid|does not match|required|complete this/i.test(h));
+    if (off.length || help.length) throw new Error(`Shape PHX did not accept the form: ${help[0] ?? off.map(([k]) => k).join(", ")}. Nothing was sent.`);
+
+    return {
+      action: "schedule_inspection",
+      connectionId: j,
+      summary: `Dry run: filled the Shape PHX Request form for ${ins.type} (${ins.id}) on ${r.permitId}, ${portalDate(r.date)}, then pressed Cancel. Nothing was sent.`,
+      params: { permitId: r.permitId, inspectionId: ins.id, type: ins.type, date: r.date, contact: r.contact },
+      preview: {
+        Permit: r.permitId, Inspection: `${ins.id} ${ins.type}`, "Preferred Date": got[FIELDS.date] ?? "",
+        "Site Contact Name": got[FIELDS.name] ?? "", "Site Contact Phone": got[FIELDS.phone] ?? "", "Site Contact Email": got[FIELDS.email] ?? "",
+      },
+    };
+  } finally {
+    await pressModalCancel(p); // always stop before Save
+    await p.waitForTimeout(1000);
+  }
+}
+
+// ---- one inspection record (Stanley's `inspection <P> <INS>`): related list -> INS link -> /s/inspection/<id> label/value pairs.
+const INS_LABELS = ["Number", "Request Source", "Inspection Type", "Status", "Inspection Code", "Completed Date", "Inspection Comments", "Scheduled Start Date", "Preferred Date", "Scheduled Date", "Inspector", "Site Contact Name"];
+
+/** Label/value pairs from record-page text. A value runs until the next label; "Help X" / "Edit X" helper text is skipped. */
+export const recordFields = (text: string, labels = INS_LABELS): Record<string, string> => {
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  const out: Record<string, string> = {};
+  lines.forEach((l, i) => {
+    if (!labels.includes(l) || l in out) return;
+    const v: string[] = [];
+    for (const n of lines.slice(i + 1)) {
+      if (labels.includes(n)) break;
+      if (/^(Help|Edit) /.test(n) && labels.includes(n.slice(5))) continue;
+      v.push(n);
+    }
+    out[l] = v.join("\n");
+  });
+  return out;
+};
+const dateIn = (s = "") => { const m = s.match(/\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4}|[A-Z][a-z]{2,8} \d{1,2}, \d{4}/); return m ? isoDay(m[0]) : undefined; };
+
+async function readInspection(p: Page, permitId: string, insId: string): Promise<Inspection | undefined> {
+  const rid = await recordId(p, permitId);
+  await p.goto(`${BASE}/s/permit2/related/${rid}/MUSW__Inspections__r`, { waitUntil: "domcontentloaded" });
+  const link = p.locator("a", { hasText: new RegExp(`^\\s*${insId}\\s*$`) }).first();
+  // The related list lazy-loads ("6+ items"): scroll its scroller until the INS shows up.
+  for (let i = 0; i < 10 && !(await link.count()); i++) {
+    await p.waitForTimeout(i ? 2500 : 4000);
+    await p.evaluate(() => { document.querySelectorAll(".uiScroller,.scroller,[class*=scroller]").forEach((e) => { e.scrollTop = e.scrollHeight; }); window.scrollTo(0, document.body.scrollHeight); });
+  }
+  if (!(await link.count())) return undefined;
+  const href = await link.getAttribute("href");
+  if (!href || !/^\/s\/inspection\//.test(new URL(href, BASE).pathname)) return undefined;
+  await p.goto(new URL(href, BASE).href, { waitUntil: "domcontentloaded" });
+  await p.getByText("Inspection Type", { exact: true }).first().waitFor({ timeout: 30_000 }).catch(() => {});
+  await p.waitForTimeout(1500);
+  // Form elements pierce the shadow DOM; the page text is the fallback.
+  const items = (await p.locator(".slds-form-element").allInnerTexts().catch(() => [] as string[])).join("\n");
+  let f = recordFields(items);
+  if (!f["Inspection Type"]) f = recordFields(await p.locator("body").innerText());
+  if (!f["Inspection Type"] && !f.Status) throw new Error(`Could not read ${insId} on Shape PHX.`);
+  const raw = f.Status ?? "";
+  return {
+    id: f.Number || insId, permitId, type: f["Inspection Type"] ?? "", status: /^(pending|requested)$/i.test(raw) ? "needed" : inspStatus(raw),
+    scheduledFor: dateIn(f["Completed Date"]) ?? dateIn(f["Scheduled Start Date"]) ?? dateIn(f["Scheduled Date"]),
+    notes: raw || undefined,
+    comments: f["Inspection Comments"] || undefined,
+  };
+}
+
 export const shapePhx: PortalAdapter = {
   platform: "shape-phx",
   maturity: "ready",
+  // The booking dry run below has not been run against the real portal yet (ticket 04). Flip after a live test.
+  bookingVerified: false,
 
   login: (_j, c) => serial(async () => {
     const browser = await chromium.launch({ executablePath: chromePath(), headless: true, args: ["--no-sandbox"] });
@@ -225,30 +379,35 @@ export const shapePhx: PortalAdapter = {
     } finally { await browser.close(); }
   }),
 
-  listPermits: (j, s) => cached(`p:${(s as unknown as Sess).user}`, () => withPortal(s, (p) => readPermits(p, j.id))),
+  // No cache here: src/service.ts owns freshness (ADR 0002).
+  listPermits: (j, s) => withPortal(s, (p) => readPermits(p, j.id)),
 
   getPermit: async (j, s, id) => (await shapePhx.listPermits(j, s)).find((x) => x.id.toLowerCase() === id.toLowerCase()),
 
-  async listInspections(j, s, permitId) {
-    const user = (s as unknown as Sess).user;
-    const permits = await shapePhx.listPermits(j, s);
+  /** One browser session: the permit list (already open) tells which permits can have inspections, then each one is read. */
+  listInspections: (j, s, permitId) => withPortal(s, async (p) => {
     // Only permits that can have inspections: issued or in the inspection phase, not just shared with you.
-    const ids = permitId ? [permitId] : permits.filter((x) => (x.status === "issued" || x.status === "inspection_phase") && !x.description?.startsWith("Shared with you")).map((x) => x.id);
-    const need = ids.filter((id) => !cache.has(`i:${user}:${id}`) || Date.now() - cache.get(`i:${user}:${id}`)!.at >= FRESH_MS);
-    if (need.length) {
-      // One browser session for all permits.
-      const failed: string[] = [];
-      await withPortal(s, async (p) => {
-        for (const id of need) {
-          try { cache.set(`i:${user}:${id}`, { at: Date.now(), data: await readInspections(p, id) }); }
-          catch (e) { failed.push(`${id}: ${(e as Error).message}`); }
-        }
-      });
-      if (failed.length === need.length) throw new Error(`Could not read inspections. ${failed[0]}`);
+    const ids = permitId ? [permitId] : (await readPermits(p, j.id)).filter((x) => (x.status === "issued" || x.status === "inspection_phase") && !x.description?.startsWith("Shared with you")).map((x) => x.id);
+    const out: Inspection[] = [], failed: string[] = [];
+    for (const id of ids) {
+      try { out.push(...await readInspections(p, id)); }
+      catch (e) { failed.push(`${id}: ${(e as Error).message}`); }
     }
-    return ids.flatMap((id) => (cache.get(`i:${user}:${id}`)?.data as Inspection[] | undefined) ?? []);
+    if (ids.length && failed.length === ids.length) throw new Error(`Could not read inspections. ${failed[0]}`);
+    return out;
+  }),
+
+  async proposeInspection(j, s, r) {
+    if (!r.contact.phone && !r.contact.email) throw new Error("Add a site contact phone or email to your company profile first.");
+    return withPortal(s, (p) => dryRunRequest(p, j.id, r));
   },
 
-  async proposeInspection() { throw new Error("Booking inspections on Shape PHX is not enabled yet."); },
+  async getInspection(_j, s, permitId, inspectionId) {
+    // Ids go into page matching, so only accept the portal's own shape.
+    if (!/^INS-\d+$/.test(inspectionId)) throw new Error(`"${inspectionId}" is not a Shape PHX inspection number (like INS-00985207).`);
+    // On demand and user-triggered, so no cache here (src/service.ts owns freshness for the lists).
+    return withPortal(s, (p) => readInspection(p, permitId, inspectionId));
+  },
+
   async commit() { throw new Error("Booking inspections on Shape PHX is not enabled yet."); },
 };

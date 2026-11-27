@@ -9,10 +9,12 @@ const nope = (platform: string) => async (): Promise<never> => {
 export const planned = (platform: string): PortalAdapter => ({
   platform,
   maturity: "planned",
+  bookingVerified: false,
   login: async () => ({ ok: false, reason: "unsupported", message: `"${platform}" adapter is not built yet.` }),
   listPermits: nope(platform),
   getPermit: nope(platform),
   listInspections: nope(platform),
+  getInspection: nope(platform),
   proposeInspection: nope(platform),
   commit: nope(platform),
 });

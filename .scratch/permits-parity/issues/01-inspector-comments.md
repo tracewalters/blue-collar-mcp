@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] Comments appear in the inspection tool result and the dashboard detail view
-- [ ] Common data model and schemas include comments
-- [ ] Covered by a server-level test using the demo city
+- [x] Comments appear in the inspection tool result and the dashboard detail view
+- [x] Common data model and schemas include comments
+- [x] Covered by a server-level test using the demo city

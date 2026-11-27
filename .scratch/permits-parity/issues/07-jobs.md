@@ -4,8 +4,8 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** in-review (branch t07-jobs-parity)
 
-- [ ] Auto-grouping by address
-- [ ] Rename and merge persist
-- [ ] Jobs appear in Claude answers and on the dashboard
+- [x] Auto-grouping by address
+- [x] Rename and merge persist
+- [x] Jobs appear in Claude answers and on the dashboard

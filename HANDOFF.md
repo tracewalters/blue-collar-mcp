@@ -17,6 +17,7 @@ src/server.ts          hosted server: /t/<secret>/mcp, /auth/claim, /api/*; sess
 src/service.ts         the one place that does work (CLI, MCP and dashboard all call it)
 src/permit-tools.ts    permit MCP tools;  src/setup-tools.ts  onboarding tools (run_setup form)
 src/profile.ts         company profile + chosen cities (per company)
+src/jobs.ts            Jobs: permits grouped by site address; rename/merge saved per company (jobs.json)
 src/adapters/          demo, shape-phx (real), planned placeholders
 src/vault.ts           per-company encrypted vault; tenantDir (AsyncLocalStorage) scopes everything
 src/brain/             PARKED notes + ingest (BCMCP_BRAIN=1 turns on)
@@ -52,7 +53,7 @@ Read `GLOSSARY.md`, `docs/SPEC.md` (36 user stories, one test seam: the running 
 2. **Make the deployment permanent** (needs Trace to run root commands): systemd units for API and web, Caddy snippet.
 3. **Dashboard**: sort ready cities to the top of "Add more cities"; show inspections as a calendar; loading states for the slow (~1 min) first inspections read.
 4. **More cities**: research which portal software each Phoenix-metro city uses (Queen Creek, Cave Creek, Maricopa, Mesa, Chandler, Gilbert...) and use `docs/ROADMAP.md` portal playbook. Public Shape PHX data (ArcGIS layer at `mapportal.phoenix.gov/pds/rest/services/ShapePHX/ShapePHXPermitsPoints/MapServer`, weekly) is a no-login fallback.
-5. Scheduled sync / alerts (failed inspection, expiring permit). Not built; everything is on request with a 5-minute in-memory cache.
+5. Scheduled sync / alerts (failed inspection, expiring permit). Not built (ADR 0002: no polling). Reads refresh on demand: data older than 15 min refreshes in the background when someone looks; per-Company `cache.json`.
 6. Parked: company brain, rules packs, books, CRM, inventory, usage-based pricing. See `docs/ROADMAP.md`.
 
 ## Gotchas

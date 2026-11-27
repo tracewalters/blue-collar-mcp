@@ -2,34 +2,16 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { AskClaude, DashShell, Loading, Note, Pill, Problem, SignedOut, StatusChip, limeBtn, useApi } from "@/components/Dash";
-import {
-  CLOSED, daysFrom, fmtDay, inspLabel, money, pendingCities, permitHref, permitLabel, problem,
-  type Inspection, type Me, type Permit,
-} from "@/lib/dash";
+import { AskClaude, DashShell, Freshness, Loading, Note, Pill, Problem, SignedOut, StatusChip, limeBtn, useBoard } from "@/components/Dash";
+import { CLOSED, daysFrom, fmtDay, inspLabel, money, permitHref, permitLabel, problem, type Inspection, type Me, type Permit } from "@/lib/dash";
 
 const views = [["all", "All"], ["action", "Needs you"], ["open", "Open"], ["closed", "Closed"]] as const;
 
 export default function Dashboard() {
   return (
     <DashShell>
-      {(me) => (
-        <>
-          <NeedsLogin n={pendingCities(me).length} />
-          {me.connections.length ? <Board me={me} /> : <NoCities />}
-        </>
-      )}
+      {(me) => (me.connections.length ? <Board me={me} /> : <NoCities />)}
     </DashShell>
-  );
-}
-
-function NeedsLogin({ n }: { n: number }) {
-  if (!n) return null;
-  return (
-    <Link href="/dashboard/connect" className="mt-8 flex min-h-12 items-center justify-between gap-3 rounded-xl border border-warn/40 bg-panel px-4 py-3 hover:bg-panel-2">
-      <span className="flex items-center gap-2 text-[15px]"><span className="h-2 w-2 shrink-0 rounded-full bg-warn" aria-hidden />{n} {n === 1 ? "city still needs" : "cities still need"} a login</span>
-      <span className="shrink-0 text-[15px] font-semibold">Connect →</span>
-    </Link>
   );
 }
 
@@ -44,16 +26,14 @@ function NoCities() {
 }
 
 function Board({ me }: { me: Me }) {
-  const permits = useApi<Permit[]>("/permits");
-  const insp = useApi<Inspection[]>("/inspections");
+  const board = useBoard();
   const [city, setCity] = useState("all");
   const [view, setView] = useState<(typeof views)[number][0]>("all");
 
-  for (const r of [permits.res, insp.res]) if (r && !r.ok && r.signedOut) return <SignedOut />;
-  if (!permits.res || !insp.res) return <Loading />;
-  if (!permits.res.ok) return <Problem message={permits.res.message} retry={permits.reload} />;
-  const list = permits.res.data;
-  const inspections = insp.res.ok ? insp.res.data : [];
+  if (board.signedOut) return <SignedOut />;
+  if (!board.res) return <Loading slow />;
+  if (!board.res.ok) return <Problem message={board.res.message} retry={board.fresh.onRefresh} />;
+  const { permits: list, inspections } = board;
   const cityName = (id: string) => me.connections.find((c) => c.id === id)?.name ?? id;
 
   const open = list.filter((p) => !CLOSED.includes(p.status));
@@ -75,17 +55,20 @@ function Board({ me }: { me: Me }) {
   ];
 
   return (
-    <div className="mt-10 space-y-14">
-      <section aria-label="Summary" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {tiles.map(([label, n, hot]) => (
-          <div key={label} className="rounded-2xl border border-line bg-panel p-5">
-            <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-ink-3">
-              {hot && <span className="h-2 w-2 rounded-full bg-bad" aria-label="Needs you" />}{label}
-            </p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{n}</p>
-          </div>
-        ))}
-      </section>
+    <div className="mt-8 space-y-14">
+      <div className="space-y-4">
+        <Freshness {...board.fresh} />
+        <section aria-label="Summary" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {tiles.map(([label, n, hot]) => (
+            <div key={label} className="rounded-2xl border border-line bg-panel p-5">
+              <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-ink-3">
+                {hot && <span className="h-2 w-2 rounded-full bg-bad" aria-label="Needs you" />}{label}
+              </p>
+              <p className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{n}</p>
+            </div>
+          ))}
+        </section>
+      </div>
 
       <section aria-labelledby="permits" className="min-w-0">
         <h2 id="permits" className="text-2xl font-semibold tracking-tight">Permits <span className="text-ink-3">{list.length}</span></h2>
@@ -107,7 +90,7 @@ function Board({ me }: { me: Me }) {
               <li key={`${p.jurisdiction}|${p.id}`}>
                 <Link href={permitHref(p)} className="grid gap-3 p-5 hover:bg-panel-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                   <div className="min-w-0">
-                    <p className="text-lg font-semibold">{p.address}</p>
+                    <p className="text-lg font-semibold">{p.address || "No site address"}</p>
                     <p className="mt-0.5 text-[15px] text-ink-2">{p.type} · <span className="font-mono text-sm">{p.id}</span> · {cityName(p.jurisdiction)}</p>
                     {x.why && x.tone && <div className="mt-2"><Note tone={x.tone}>{x.why}</Note></div>}
                   </div>
@@ -120,14 +103,14 @@ function Board({ me }: { me: Me }) {
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <Timeline inspections={inspections} permits={list} failed={!insp.res.ok} />
+        <Timeline inspections={inspections} permits={list} failed={board.inspFailed} loading={board.inspLoading} />
         <AskClaude prompts={["Which permits need me this week?", "What does the city want fixed on my electrical permit?", "What fees do I owe the city?"]} />
       </div>
     </div>
   );
 }
 
-function Timeline({ inspections, permits, failed }: { inspections: Inspection[]; permits: Permit[]; failed: boolean }) {
+function Timeline({ inspections, permits, failed, loading }: { inspections: Inspection[]; permits: Permit[]; failed: boolean; loading: boolean }) {
   const dated = (i: Inspection) => (i.scheduledFor ? daysFrom(i.scheduledFor) : null);
   const upcoming = inspections
     .filter((i) => (i.status === "needed" || i.status === "scheduled") && (dated(i) ?? 0) >= 0)
@@ -170,10 +153,12 @@ function Timeline({ inspections, permits, failed }: { inspections: Inspection[];
     <section aria-labelledby="insp" className="min-w-0">
       <h2 id="insp" className="text-2xl font-semibold tracking-tight">Inspections</h2>
       {failed && <p className="mt-2 text-ink-2">We couldn't load inspections right now.</p>}
+      {loading ? <p className="mt-5 rounded-2xl border border-line bg-panel p-5 text-ink-2" role="status">Reading inspections from the city portal. The first time takes about a minute.</p> : (
       <div className="mt-5 space-y-6">
         {block("Coming up", upcoming, "Nothing booked yet.")}
         {block("Recent", recent, "No past inspections.")}
       </div>
+      )}
     </section>
   );
 }

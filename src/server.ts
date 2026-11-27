@@ -121,16 +121,21 @@ const api = async (req: IncomingMessage, res: ServerResponse, path: string) => {
         const cities = cur.cities.filter((c) => c !== b.removeCity).concat(b.addCity ? [b.addCity] : []);
         return json(res, 200, saveProfile({ cities }));
       }
-      if (path === "/permits") return json(res, 200, await svc.listPermits(q.get("city") ?? undefined));
-      if (path === "/inspections") return json(res, 200, await svc.listInspections(q.get("city") ?? undefined));
-      if (path === "/permit") return json(res, 200, await svc.getPermit(q.get("city")!, q.get("id")!));
+      const refresh = q.get("refresh") === "1";
+      if (path === "/permits") return json(res, 200, await svc.listPermits(q.get("city") ?? undefined, { refresh }));
+      if (path === "/inspections") return json(res, 200, await svc.listInspections(q.get("city") ?? undefined, { refresh }));
+      if (path === "/inspection") return json(res, 200, await svc.getInspection(q.get("city")!, q.get("permit")!, q.get("id")!));
+      if (path === "/jobs") return json(res, 200, await svc.listJobs());
+      if (path === "/jobs/rename" && req.method === "POST") { const b = z.object({ job: z.string(), name: z.string().max(120) }).parse(await body(req)); return json(res, 200, await svc.renameJobTo(b.job, b.name)); }
+      if (path === "/jobs/merge" && req.method === "POST") { const b = z.object({ from: z.string(), into: z.string() }).parse(await body(req)); return json(res, 200, await svc.mergeJob(b.from, b.into)); }
+      if (path === "/permit") return json(res, 200, await svc.getPermit(q.get("city")!, q.get("id")!, { refresh }));
       if (path === "/connect" && req.method === "POST") {
         if (tooMany(tenant.id)) return json(res, 429, { error: "Too many tries. Wait a minute." });
         const b = z.object({ city: z.string(), username: z.string().min(1), password: z.string().min(1) }).parse(await body(req));
         const r = await svc.login(b.city, { username: b.username, password: b.password });
-        return json(res, r.ok ? 200 : 400, r.ok ? { ok: true } : { ok: false, message: (r as { message?: string }).message ?? "Login failed." });
+        return json(res, r.ok ? 200 : 400, r.ok ? { ok: true, key: svc.issueConnectKey(b.city) } : { ok: false, message: (r as { message?: string }).message ?? "Login failed." });
       }
-      if (path === "/disconnect" && req.method === "POST") { svc.logout(z.object({ city: z.string() }).parse(await body(req)).city); return json(res, 200, { ok: true }); }
+      if (path === "/disconnect" && req.method === "POST") { await svc.logout(z.object({ city: z.string() }).parse(await body(req)).city); return json(res, 200, { ok: true }); }
       if (path === "/signout" && req.method === "POST") { res.setHeader("set-cookie", "bc_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax"); return json(res, 200, { ok: true }); }
       json(res, 404, { error: "Not found" });
     } catch (e) { json(res, 400, { error: (e as Error).message }); }
@@ -143,7 +148,7 @@ setInterval(() => { for (const [id, x] of sessions) if (Date.now() - x.last > 30
 
 const buildServer = (tenant: { id: string }, dash: string) => {
   const server = new McpServer({ name: "blue-collar-mcp", version: "0.1.0" }, {
-    instructions: "Blue Collar MCP: permits for residential contractors. ALWAYS call get_setup first. If needsSetup is true, call run_setup (it shows a form in the chat); if the client cannot show forms, ask the questions get_setup gives, with your multiple-choice question tool if you have one. Then call open_dashboard. Use the permit tools for any question about permits, inspections or deadlines. Keep replies under 6 short lines. If no city is connected, call open_dashboard and tell the user to connect their portal there. Never ask for portal passwords in chat." + (process.env.BCMCP_BRAIN ? " " + BRAIN_INSTRUCTIONS : ""),
+    instructions: "Blue Collar MCP: permits for residential contractors. ALWAYS call get_setup first. If needsSetup is true, call run_setup (it shows a form in the chat); if the client cannot show forms, ask the questions get_setup gives, with your multiple-choice question tool if you have one. Then call open_dashboard. Use the permit tools for any question about permits, inspections, jobs or deadlines. Keep replies under 6 short lines. If no city is connected, call open_dashboard and tell the user to connect their portal there. Never ask for portal passwords in chat." + (process.env.BCMCP_BRAIN ? " " + BRAIN_INSTRUCTIONS : ""),
   });
   registerSetup(server);
   registerSetupForm(server);
@@ -160,7 +165,8 @@ const buildServer = (tenant: { id: string }, dash: string) => {
     const target = city ?? (profile ? pending[0] : connected.length ? undefined : firstReal);
     const next = target && !connected.includes(target) ? `/dashboard/connect?city=${encodeURIComponent(target)}` : "/dashboard";
     const where = next === "/dashboard" ? "your permit dashboard" : `the page to connect ${pending.length > 1 ? "your cities" : "your city portal"}`;
-    return { content: [{ type: "text" as const, text: `Open ${where}: ${dashboardLink(tenant.id, dash, next)}` }] };
+    const after = next === "/dashboard" ? "" : "\n(For you, not the user: after they sign in there, call list_connections to see it connected. If they paste a key like ABCD-1234, pass it as key.)";
+    return { content: [{ type: "text" as const, text: `Open ${where}: ${dashboardLink(tenant.id, dash, next)}${after}` }] };
   });
   if (process.env.BCMCP_BRAIN) { registerBrain(server); registerIngest(server); }
   return server;

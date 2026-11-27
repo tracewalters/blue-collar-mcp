@@ -69,26 +69,35 @@ const help = `permit <command>
   permits [--city ID]           List permits (all connected cities by default)
   permit <city> <permitId>      Permit detail and inspections
   inspections [--city ID]       List inspections
+  inspection <city> <permitId> <inspectionId>   One inspection with the inspector's comments
+  jobs                          Permits grouped into jobs by site address
+  job-rename <jobId> <name>     Rename a job
+  job-merge <fromId> <intoId>   Fold one job into another
   schedule <city> <permitId> --type TYPE --date YYYY-MM-DD
                                 Propose an inspection (prints a token)
   commit <token>                Execute a proposed action
 Add --json for machine-readable output.`;
 
 async function main() {
-  const [cmd, a, b] = pos;
+  const [cmd, a, b, c] = pos;
   switch (cmd) {
     case "login": return loginFlow();
-    case "logout": svc.logout(a); return console.log("Removed.");
+    case "logout": await svc.logout(a); return console.log("Removed.");
     case "cities": { const c = listJurisdictions(); return out(c, table(c.map((x) => ({ id: x.id, name: `${x.name}, ${x.state}`, platform: x.platform })))); }
     case "connections": { const c = svc.listConnections(); return out(c, table(c)); }
-    case "permits": { const p = await svc.listPermits(flag("city")); return out(p, table(p.map((x) => ({ id: x.id, type: x.type, address: x.address, status: x.status })))); }
+    case "permits": { const { permits: p } = await svc.listPermits(flag("city")); return out(p, table(p.map((x) => ({ id: x.id, type: x.type, address: x.address, status: x.status })))); }
     case "permit": { const r = await svc.getPermit(a, b); return out(r, JSON.stringify(r, null, 2)); }
-    case "inspections": { const i = await svc.listInspections(flag("city")); return out(i, table(i.map((x) => ({ id: x.id, permit: x.permitId, type: x.type, status: x.status })))); }
+    case "inspections": { const { inspections: i } = await svc.listInspections(flag("city")); return out(i, table(i.map((x) => ({ id: x.id, permit: x.permitId, type: x.type, status: x.status })))); }
+    case "inspection": { const i = await svc.getInspection(a, b, c); return out(i, `${i.id} ${i.type}: ${i.status}${i.scheduledFor ? ` (${i.scheduledFor})` : ""}\nInspector: ${i.comments ?? "no comments"}`); }
+    case "jobs": { const r = await svc.listJobs(); return out(r, table(r.jobs.map((j) => ({ id: j.id, name: j.name, permits: j.permits.map((p) => p.id).join(", ") }))) + (r.ungrouped.length ? `\nNo address: ${r.ungrouped.map((p) => p.id).join(", ")}` : "")); }
+    case "job-rename": { await svc.renameJobTo(a, pos.slice(2).join(" ")); return console.log("Renamed."); }
+    case "job-merge": { await svc.mergeJob(a, b); return console.log("Merged."); }
     case "schedule": {
       const type = flag("type"), date = flag("date");
       if (!type || !date) throw new Error("--type and --date are required");
       const r = await svc.proposeInspection(a, { permitId: b, type, date });
-      return out(r, `${r.summary}\nTo execute: permit commit ${r.token}   (expires in ${r.expiresInMinutes} min)`);
+      const form = Object.entries(r.preview ?? {}).map(([k, v]) => `  ${k}: ${v}`).join("\n");
+      return out(r, `${r.summary}\n${form ? form + "\n" : ""}To execute: permit commit ${r.token}   (expires in ${r.expiresInMinutes} min)`);
     }
     case "commit": { const r = await svc.commit(a); return out(r, r.message); }
     default: console.log(help);

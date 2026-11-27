@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
+const NEXT = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() + 3); while (d.getUTCDay() % 6 === 0) d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })(); // a weekday after today
 process.env.PERMIT_MCP_HOME = mkdtempSync(join(tmpdir(), "permit-"));
 const svc = await import("../src/service.ts");
 const vault = await import("../src/vault.ts");
@@ -30,16 +31,16 @@ test("unbuilt platform fails clearly", async () => {
 test("login once, read across cities, two-phase write", async () => {
   assert.equal((await svc.login("demo-city", { username: "demo", password: "demo" })).ok, true);
   assert.equal(svc.listConnections().length, 1);
-  assert.ok((await svc.listPermits()).length >= 3);
-  const before = (await svc.listInspections()).length;
+  assert.ok((await svc.listPermits()).permits.length >= 3);
+  const before = (await svc.listInspections()).inspections.length;
 
-  const { token, summary } = await svc.proposeInspection("demo-city", { permitId: "BLD-2026-0142", type: "Framing", date: "2026-12-01" });
-  assert.equal((await svc.listInspections()).length, before, "propose must not change anything");
+  const { token, summary } = await svc.proposeInspection("demo-city", { permitId: "BLD-2026-0142", type: "Framing", date: NEXT });
+  assert.equal((await svc.listInspections()).inspections.length, before, "propose must not change anything");
   assert.match(svc.peek(token), /Framing/);
   assert.match(summary, /Framing/);
 
   assert.equal((await svc.commit(token)).ok, true);
-  assert.equal((await svc.listInspections()).length, before + 1);
+  assert.equal((await svc.listInspections()).inspections.length, before + 1);
   await assert.rejects(svc.commit(token), /already-used|Unknown/, "token is single use");
 });
 

@@ -9,14 +9,31 @@ export interface Permit {
 }
 export type InspStatus = "needed" | "scheduled" | "completed" | "passed" | "failed" | "cancelled";
 export interface Inspection {
-  id: string; permitId: string; type: string; status: InspStatus; scheduledFor?: string; notes?: string; jurisdiction?: string;
+  id: string; permitId: string; type: string; status: InspStatus; scheduledFor?: string; notes?: string; comments?: string; jurisdiction?: string;
 }
+export interface JobPermit { id: string; jurisdiction: string; type: string; status: PermitStatus; address: string }
+export interface Job { id: string; name: string; addresses: string[]; cities: string[]; permits: JobPermit[] }
+export interface Jobs { jobs: Job[]; ungrouped: JobPermit[] }
 export interface City { id: string; name: string; state: string; platform: string; maturity: "ready" | "demo" | "planned" }
 export interface Connection { id: string; name: string; platform: string; connectedAt: string }
 export interface Profile {
   company: string; userName: string; role?: string; phone?: string; email?: string; license?: string; cities: string[];
 }
 export interface Me { company: string; userName?: string; profile: Profile | null; connections: Connection[]; cities: City[] }
+
+/** Every read says when the city portal was last checked (ADR 0002: refresh on open when older than ~15 min). */
+export interface Fresh { fetchedAt: string | null; ageMinutes: number | null; refreshing: boolean; refreshError?: string }
+export type Permits = Fresh & { permits: Permit[] };
+export type Inspections = Fresh & { inspections: Inspection[] };
+
+/** "just now", "4 min ago", "2 h ago", "Nov 24". */
+export const ago = (iso: string) => {
+  const m = Math.floor((Date.now() - Date.parse(iso)) / 60_000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
+  if (m < 24 * 60) return `${Math.floor(m / 60)} h ago`;
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
 
 export type Result<T> = { ok: true; data: T } | { ok: false; signedOut: boolean; message: string };
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { DashShell, Note, darkBtn, limeBtn } from "@/components/Dash";
+import { DashShell, Note, Spinner, darkBtn, limeBtn } from "@/components/Dash";
 import { api, fmtDay, isBuilt, type City, type Connection, type Me, type Profile } from "@/lib/dash";
 
 // Setup checklist: one card per city the user picked in Claude. Logins happen here, never in chat.
@@ -62,7 +62,8 @@ function Checklist({ me, profile: first }: { me: Me; profile: Profile }) {
           {allDone && (
             <div className="mt-6 rounded-2xl border border-lime/40 bg-panel p-6 sm:p-8">
               <p className="flex items-center gap-3 text-2xl font-semibold tracking-tight"><Check />You're all set</p>
-              <p className="mt-2 text-ink-2">Your permits and inspections are ready. Claude can read them too.</p>
+              <p className="mt-2 text-ink-2">Go back to Claude. It checks on its own and can read your permits now. Or say:</p>
+              <p className="mt-3 w-fit max-w-full rounded-full border border-line bg-panel-2 px-4 py-2 font-mono text-[15px]">check my cities</p>
               <Link href="/dashboard" className={`${limeBtn} mt-6 min-h-14 w-full px-8 text-lg sm:w-auto`}>Open my dashboard</Link>
             </div>
           )}
@@ -114,15 +115,17 @@ function CityCard({ city, conn, open, setOpen, onConnected, onDropped }: {
 }) {
   const [busy, setBusy] = useState<"" | "in" | "out">("");
   const [msg, setMsg] = useState("");
+  const [key, setKey] = useState("");
   const built = isBuilt(city);
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     setBusy("in"); setMsg("");
-    const r = await api("/connect", { city: city.id, username: f.get("username"), password: f.get("password") });
+    const r = await api<{ key?: string }>("/connect", { city: city.id, username: f.get("username"), password: f.get("password") });
     setBusy("");
     if (!r.ok) return setMsg(r.signedOut ? signedOutMsg : r.message);
+    setKey(r.data.key ?? "");
     setOpen(false);
     onConnected({ id: city.id, name: city.name, platform: city.platform, connectedAt: new Date().toISOString() });
   };
@@ -130,7 +133,7 @@ function CityCard({ city, conn, open, setOpen, onConnected, onDropped }: {
     setBusy("out"); setMsg("");
     const r = await api("/disconnect", { city: city.id });
     setBusy("");
-    if (r.ok) onDropped(); else setMsg(r.signedOut ? signedOutMsg : r.message);
+    if (r.ok) { setKey(""); onDropped(); } else setMsg(r.signedOut ? signedOutMsg : r.message);
   };
 
   const status = conn
@@ -152,6 +155,16 @@ function CityCard({ city, conn, open, setOpen, onConnected, onDropped }: {
 
       {!built && <p className="-mt-2 px-5 pb-5 pl-16 text-[15px] text-ink-3">We're building this portal. We'll tell you when it's ready.</p>}
       {conn && msg && <div className="px-5 pb-5" role="alert"><Note tone="bad">{msg}</Note></div>}
+      {conn && key && (
+        <div className="border-t border-line p-5" role="status">
+          <p className="font-semibold">Connected. Go back to Claude.</p>
+          <p className="mt-1 text-[15px] text-ink-2">Claude checks on its own. Only if it asks, paste this key in the chat:</p>
+          <p className="mt-3 flex flex-wrap items-center gap-3">
+            <span className="w-fit rounded-full border border-line bg-panel-2 px-4 py-2 font-mono text-lg tracking-wider">{key}</span>
+            <span className="text-sm text-ink-3">Works once, for 10 minutes. It is not your password.</span>
+          </p>
+        </div>
+      )}
 
       {!conn && built && open && (
         <form onSubmit={submit} className="border-t border-line p-5">
@@ -195,4 +208,3 @@ const Check = () => (
   </span>
 );
 
-const Spinner = () => <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-white/20 border-t-white" aria-hidden />;
