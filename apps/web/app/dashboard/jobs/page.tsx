@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { AskClaude, DashShell, Freshness, Loading, Note, Problem, SignedOut, darkBtn, dot, limeBtn, useApi, useBoard } from "@/components/Dash";
-import { api, permitHref, permitLabel, problem, type Inspection, type Job, type Jobs as JobList, type Permit } from "@/lib/dash";
+import { api, isRecent, lastActivity, fmtDay, permitHref, permitLabel, problem, type Inspection, type Job, type Jobs as JobList, type Permit } from "@/lib/dash";
 
 // Jobs: a company's permits grouped by site address. Rename and merge are saved for the whole company.
 
@@ -40,13 +40,17 @@ function JobList({ permits, inspections }: { permits: Permit[]; inspections: Ins
   const [data, setData] = useState<JobList | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [err, setErr] = useState("");
+  const [older, setOlder] = useState(false);
   if (!res) return <p className="text-ink-2" role="status">Loading your jobs…</p>;
   if (!res.ok) return res.signedOut ? <SignedOut /> : <Problem message="We couldn't load your jobs right now." retry={reload} />;
   const { jobs, ungrouped } = data ?? res.data;
   const full = (id: string, city: string) => permits.find((p) => p.id === id && p.jurisdiction === city);
   const worst = (j: Job) => j.permits.map((jp) => { const p = full(jp.id, jp.jurisdiction); return p ? { p, x: problem(p, inspections) } : null; })
     .filter((v) => v !== null).sort((a, b) => a.x.rank - b.x.rank)[0];
-  const ranked = jobs.map((j) => ({ j, w: worst(j) })).sort((a, b) => (a.w?.x.rank ?? 9) - (b.w?.x.rank ?? 9) || a.j.name.localeCompare(b.j.name));
+  const last = (j: Job) => j.permits.map((jp) => { const p = full(jp.id, jp.jurisdiction); return p ? lastActivity(p, inspections) : ""; }).sort().pop() ?? "";
+  const all = jobs.map((j) => ({ j, w: worst(j), last: last(j) })).sort((a, b) => b.last.localeCompare(a.last) || a.j.name.localeCompare(b.j.name));
+  const ranked = older ? all : all.filter((r) => isRecent(r.last));
+  const hidden = all.length - all.filter((r) => isRecent(r.last)).length;
   const save = async (path: string, body: object) => {
     setErr("");
     const r = await api<JobList>(path, body);
@@ -56,15 +60,15 @@ function JobList({ permits, inspections }: { permits: Permit[]; inspections: Ins
   return (
     <section aria-labelledby="jobs" className="min-w-0">
       <h2 id="jobs" className="text-2xl font-semibold tracking-tight">Jobs <span className="text-ink-3">{jobs.length}</span></h2>
-      <p className="mt-1 text-ink-2">Your permits grouped by job site. Problems first. Tap a permit for the full story.</p>
+      <p className="mt-1 text-ink-2">Your permits grouped by job site. Most recent first. Tap a permit for the full story.</p>
       <ul className="mt-5 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-panel">
-        {jobs.length === 0 && <li className="p-6 text-ink-2">No jobs yet. Permits with a site address show up here.</li>}
-        {ranked.map(({ j, w }) => (
+        {ranked.length === 0 && <li className="p-6 text-ink-2">{jobs.length ? "Nothing recent. Older jobs are below." : "No jobs yet. Permits with a site address show up here."}</li>}
+        {ranked.map(({ j, w, last }) => (
           <li key={j.id} className="p-5">
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
               <div className="min-w-0">
                 <p className="text-lg font-semibold">{j.name}</p>
-                <p className="mt-0.5 text-[15px] text-ink-2">{j.permits.length} permit{j.permits.length === 1 ? "" : "s"} · {j.addresses.join(" · ")}</p>
+                <p className="mt-0.5 text-[15px] text-ink-2">{j.permits.length} permit{j.permits.length === 1 ? "" : "s"}{last ? ` · last activity ${fmtDay(last)}` : ""}</p>
                 {w?.x.why && w.x.tone && <div className="mt-2"><Note tone={w.x.tone}><span>{w.x.why} <span className="text-ink-3">({w.p.id})</span></span></Note></div>}
                 <ul className="mt-3 flex flex-wrap gap-2">
                   {j.permits.map((p) => {
@@ -86,6 +90,7 @@ function JobList({ permits, inspections }: { permits: Permit[]; inspections: Ins
           </li>
         ))}
       </ul>
+      {hidden > 0 && <button type="button" className={`${darkBtn} mt-3`} onClick={() => setOlder(!older)}>{older ? "Hide older jobs" : `Show ${hidden} older job${hidden === 1 ? "" : "s"}`}</button>}
       {ungrouped.length > 0 && (
         <p className="mt-3 text-[15px] text-ink-3">No site address, so not in a job: {ungrouped.map((p, i) => (
           <span key={`${p.jurisdiction}|${p.id}`}>{i ? ", " : ""}<Link href={permitHref(p)} className="font-mono text-sm text-ink-2 underline">{p.id}</Link></span>

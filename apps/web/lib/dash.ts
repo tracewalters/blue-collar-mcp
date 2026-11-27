@@ -115,5 +115,11 @@ export function problem(p: Permit, all: Inspection[]): { rank: number; why?: str
   return { rank: CLOSED.includes(p.status) ? 10 : 9 };
 }
 
+/** Latest date we know of on a permit: applied, or any inspection. YYYY-MM-DD, "" if none. */
+export const lastActivity = (p: Permit, all: Inspection[]) =>
+  [p.appliedAt, ...forPermit(p, all).map((i) => i.scheduledFor)].filter((d): d is string => !!d).map((d) => d.slice(0, 10)).sort().pop() ?? "";
+export const RECENT_DAYS = 90;
+export const isRecent = (date: string) => !!date && daysFrom(date) >= -RECENT_DAYS;
+
 export const permitHref = (p: { jurisdiction: string; id: string }) =>
   `/dashboard/permit?city=${encodeURIComponent(p.jurisdiction)}&id=${encodeURIComponent(p.id)}`;
