@@ -43,10 +43,12 @@ export function SignedOut() {
   return (
     <section className="relative mx-auto max-w-2xl py-24 text-center sm:py-32">
       <div className="blueprint absolute inset-0 -z-10" aria-hidden />
-      <h1 className="display text-5xl sm:text-7xl">Ask Claude to open your <span className="text-lime">dashboard</span></h1>
-      <p className="mx-auto mt-6 max-w-md text-lg text-ink-2">Your dashboard is private. Claude gives you a fresh link each time. In Claude, say:</p>
-      <p className="mx-auto mt-6 w-fit rounded-full border border-line bg-panel px-5 py-3 font-mono text-lg">open my permit dashboard</p>
-      <p className="mx-auto mt-6 max-w-sm text-[15px] text-ink-3">Links work once and last 10 minutes. No password needed.</p>
+      <h1 className="display text-5xl sm:text-7xl">Sign in to see your <span className="text-lime">permits</span></h1>
+      <p className="mx-auto mt-6 max-w-md text-lg text-ink-2">Your dashboard is private to your company.</p>
+      <div className="mt-8 flex justify-center gap-3">
+        <Link href="/signin" className={limeBtn}>Sign in</Link>
+        <Link href="/signup" className={darkBtn}>Start free</Link>
+      </div>
     </section>
   );
 }

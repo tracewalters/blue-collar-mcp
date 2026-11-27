@@ -51,7 +51,7 @@ export default function RulePacks() {
           <li className="py-4">Every change is logged, so you know who changed what.</li>
         </ul>
       </section>
-      <div className="mt-12"><Button href="/docs#start">Start free</Button></div>
+      <div className="mt-12"><Button href="/signup">Start free</Button></div>
     </>
   );
 }

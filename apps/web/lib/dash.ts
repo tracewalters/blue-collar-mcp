@@ -19,7 +19,7 @@ export interface Connection { id: string; name: string; platform: string; connec
 export interface Profile {
   company: string; userName: string; role?: string; phone?: string; email?: string; license?: string; cities: string[];
 }
-export interface Me { company: string; userName?: string; profile: Profile | null; connections: Connection[]; cities: City[] }
+export interface Me { account?: { email: string | null }; company: string; userName?: string; profile: Profile | null; connections: Connection[]; cities: City[] }
 
 /** Every read says when the city portal was last checked (ADR 0002: refresh on open when older than ~15 min). */
 export interface Fresh { fetchedAt: string | null; ageMinutes: number | null; refreshing: boolean; refreshError?: string }

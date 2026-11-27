@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -49,8 +49,43 @@ export const rotateTenant = (name: string) => {
   delete t[old[0]];
   t[hash(secret)] = { ...old[1], folder, created: new Date().toISOString() };
   writeTenants(t);
+  const a = readAccounts();
+  for (const k of Object.keys(a)) if (a[k].tenant === old[0]) a[k].tenant = hash(secret);
+  writeAccounts(a);
   return secret;
 };
+/** Rotate by tenant id (used by the website). Returns the new secret and the new id. */
+const rotateTenantId = (id: string) => {
+  const t = readTenants();
+  if (!t[id]) throw new Error("Unknown company.");
+  const secret = randomBytes(24).toString("base64url");
+  const next = hash(secret);
+  t[next] = { ...t[id], folder: t[id].folder ?? id.slice(0, 16), created: new Date().toISOString() };
+  delete t[id];
+  writeTenants(t);
+  const a = readAccounts();
+  for (const k of Object.keys(a)) if (a[k].tenant === id) { a[k].tenant = next; writeAccounts(a); }
+  return { secret, id: next };
+};
+
+// ---- Accounts: email + password for the website. An account points at one company (tenant). Passwords are scrypt hashes.
+type Accounts = Record<string, { salt: string; hash: string; tenant: string; created: string }>;
+const accountsFile = () => join(dataDir(), "accounts.json");
+const readAccounts = (): Accounts => (existsSync(accountsFile()) ? JSON.parse(readFileSync(accountsFile(), "utf8")) : {});
+const writeAccounts = (a: Accounts) => { mkdirSync(dataDir(), { recursive: true }); writeFileSync(accountsFile(), JSON.stringify(a, null, 2), { mode: 0o600 }); };
+const scryptHex = (pw: string, salt: string) => scryptSync(pw, salt, 64).toString("hex");
+const passwordOk = (a: Accounts[string] | undefined, pw: string) => {
+  const salt = a?.salt ?? "0".repeat(32), got = Buffer.from(scryptHex(pw, salt), "hex");
+  return !!a && timingSafeEqual(got, Buffer.from(a.hash, "hex"));
+};
+const accountFor = (tenant: string) => Object.entries(readAccounts()).find(([, v]) => v.tenant === tenant)?.[0];
+const addAccount = (email: string, pw: string, tenant: string) => {
+  const a = readAccounts(), salt = randomBytes(16).toString("hex");
+  a[email] = { salt, hash: scryptHex(pw, salt), tenant, created: new Date().toISOString() };
+  writeAccounts(a);
+};
+const Cred = z.object({ email: z.string().trim().toLowerCase().email().max(200), password: z.string().min(10, "Use at least 10 characters.").max(200) });
+
 export const revokeTenant = (name: string) => {
   const t = readTenants();
   const k = Object.keys(t).filter((x) => t[x].name === name);
@@ -94,6 +129,7 @@ const GRACE_MS = Number(process.env.BCMCP_CLAIM_GRACE_MS ?? 120_000);
 const SESSION_MS = 30 * 864e5;
 export const dashboardLink = (tenant: string, base: string, next = "/dashboard") => `${base}/auth/claim?t=${mint(tenant, 10 * 60_000, "claim", randomBytes(8).toString("hex"))}&next=${encodeURIComponent(next)}`;
 
+const sessionCookie = (tenant: string) => `bc_session=${mint(tenant, SESSION_MS, "sess")}; Path=/; Max-Age=${SESSION_MS / 1000}; HttpOnly; Secure; SameSite=Lax`;
 const cookie = (req: IncomingMessage) => Object.fromEntries((req.headers.cookie ?? "").split(/;\s*/).map((c) => c.split("=") as [string, string]));
 const json = (res: ServerResponse, code: number, data: unknown) => { res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(data)); };
 const body = (req: IncomingMessage) => new Promise<any>((ok, no) => { let b = ""; req.on("data", (c) => { b += c; if (b.length > 20_000) req.destroy(); }); req.on("end", () => { try { ok(JSON.parse(b || "{}")); } catch { no(new Error("Bad JSON")); } }); });
@@ -112,7 +148,7 @@ const api = async (req: IncomingMessage, res: ServerResponse, path: string) => {
       if (path === "/me") {
         const profile = getProfile();
         const cities = listJurisdictions().map((j) => ({ ...j, maturity: (() => { try { return getAdapter(j.platform).maturity; } catch { return "planned"; } })() }));
-        return json(res, 200, { company: profile?.company ?? tenant.name, userName: profile?.userName, profile, connections: svc.listConnections(), cities });
+        return json(res, 200, { account: { email: accountFor(tenant.id) ?? null }, company: profile?.company ?? tenant.name, userName: profile?.userName, profile, connections: svc.listConnections(), cities });
       }
       if (path === "/profile" && req.method === "POST") {
         const b = z.object({ addCity: z.string().optional(), removeCity: z.string().optional() }).parse(await body(req));
@@ -136,6 +172,18 @@ const api = async (req: IncomingMessage, res: ServerResponse, path: string) => {
         return json(res, r.ok ? 200 : 400, r.ok ? { ok: true, key: svc.issueConnectKey(b.city) } : { ok: false, message: (r as { message?: string }).message ?? "Login failed." });
       }
       if (path === "/disconnect" && req.method === "POST") { await svc.logout(z.object({ city: z.string() }).parse(await body(req)).city); return json(res, 200, { ok: true }); }
+      if (path === "/account" && req.method === "POST") { // link an email + password to a company that has none yet
+        if (accountFor(tenant.id)) return json(res, 400, { error: "This company already has a sign-in." });
+        const b = Cred.parse(await body(req));
+        if (readAccounts()[b.email]) return json(res, 400, { error: "That email already has an account." });
+        addAccount(b.email, b.password, tenant.id);
+        return json(res, 200, { ok: true });
+      }
+      if (path === "/connector/reset" && req.method === "POST") {
+        const r = rotateTenantId(tenant.id);
+        res.setHeader("set-cookie", sessionCookie(r.id));
+        return json(res, 200, { connectorUrl: `${process.env.BCMCP_PUBLIC_URL ?? `http://${req.headers.host}`}/t/${r.secret}/mcp` });
+      }
       if (path === "/signout" && req.method === "POST") { res.setHeader("set-cookie", "bc_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax"); return json(res, 200, { ok: true }); }
       json(res, 404, { error: "Not found" });
     } catch (e) { json(res, 400, { error: (e as Error).message }); }
@@ -176,6 +224,26 @@ const handle = async (req: IncomingMessage, res: ServerResponse) => {
   const url = req.url ?? "";
   const base = process.env.BCMCP_PUBLIC_URL ?? `http://${req.headers.host}`;
   if (url.startsWith("/api/")) return api(req, res, url.slice(4).split("?")[0]);
+
+  if ((url === "/auth/signup" || url === "/auth/login") && req.method === "POST") {
+    if (req.headers["x-bc"] !== "1") return json(res, 403, { error: "Bad request" });
+    if (tooMany(`auth:${req.headers["x-forwarded-for"] ?? req.socket.remoteAddress}`)) return json(res, 429, { error: "Too many tries. Wait a minute." });
+    try {
+      const raw = await body(req);
+      if (url === "/auth/login") {
+        const b = Cred.pick({ email: true }).extend({ password: z.string().min(1).max(200) }).parse(raw), a = readAccounts()[b.email];
+        if (!passwordOk(a, b.password) || !tenantByHash(a.tenant)) return json(res, 401, { error: "Wrong email or password." });
+        res.setHeader("set-cookie", sessionCookie(a.tenant));
+        return json(res, 200, { ok: true });
+      }
+      const b = Cred.extend({ company: z.string().trim().min(1, "Add your company name.").max(80) }).parse(raw);
+      if (readAccounts()[b.email]) return json(res, 400, { error: "That email already has an account. Sign in instead." });
+      const secret = createTenant(b.company), id = hash(secret);
+      addAccount(b.email, b.password, id);
+      res.setHeader("set-cookie", sessionCookie(id));
+      return json(res, 200, { ok: true, connectorUrl: `${base}/t/${secret}/mcp` });
+    } catch (e) { return json(res, 400, { error: e instanceof z.ZodError ? e.issues[0].message : (e as Error).message }); }
+  }
 
   if (url.startsWith("/auth/claim")) {
     const q = new URL(url, base).searchParams, t = check(q.get("t") ?? "", "claim");
