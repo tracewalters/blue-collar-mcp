@@ -63,7 +63,7 @@ test('booking dry run in the hosted server: fills the form from the Company prof
     const sat = shift(3, true);
     await refused({ date: iso(sat) }, new RegExp(`${portal(sat)} is a (Saturday|Sunday)`));
     await refused({ date: iso(shift(-10, false)) }, /has passed|not after today/);
-    await refused({ date: iso(new Date()) }, /not after today/);
+    await refused({ date: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Phoenix' }) }, /not after today/); // today where the cities are, not UTC
     await refused({ permitId: 'ELE-2026-0388', type: 'Rough Electrical', date: iso(day) }, /already scheduled/);
     await refused({ type: 'Roof Nail', date: iso(day) }, /No Roof Nail inspection/);
 
