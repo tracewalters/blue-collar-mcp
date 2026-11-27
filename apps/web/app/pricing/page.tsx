@@ -28,7 +28,7 @@ export default function Pricing() {
                 <li key={f} className="flex gap-3"><span className="text-lime" aria-hidden>✓</span><span className="text-ink-2">{f}</span></li>
               ))}
             </ul>
-            <div className="mt-10"><Button href="/docs#start">Start free</Button></div>
+            <div className="mt-10"><Button href="/signup">Start free</Button></div>
           </div>
         </div>
 

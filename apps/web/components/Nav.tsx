@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NavAuth } from "./NavAuth";
 import { GITHUB } from "@/lib/content";
 
 const links = [
@@ -31,12 +32,7 @@ export function Nav() {
           </ul>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/dashboard" className="hidden rounded-xl border border-line px-3.5 py-2 text-sm text-ink-2 hover:text-ink sm:block">
-            Dashboard
-          </Link>
-          <Link href="/docs#start" className="rounded-xl bg-lime px-3.5 py-2 text-sm font-semibold text-lime-ink">
-            Start free
-          </Link>
+          <NavAuth />
           <details className="relative lg:hidden">
             <summary className="cursor-pointer list-none rounded-xl bg-panel-2 px-3.5 py-2 text-sm font-semibold">Menu</summary>
             <ul className="absolute right-0 mt-2 w-56 rounded-2xl border border-line bg-panel p-2 shadow-2xl">

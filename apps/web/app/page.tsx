@@ -88,7 +88,7 @@ export default function Home() {
           <h2 className="display text-4xl sm:text-6xl">Free to <span className="text-lime">start</span></h2>
           <p className="mx-auto mt-4 max-w-md text-ink-2">Permits are free. Pay only when you need more.</p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Button href="/docs#start">Start free</Button>
+            <Button href="/signup">Start free</Button>
             <Button href="/pricing" kind="dark">See pricing</Button>
           </div>
         </div>

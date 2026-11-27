@@ -61,7 +61,7 @@ export default function HowItWorks() {
       </section>
 
       <div className="mt-12 flex flex-wrap gap-3">
-        <Button href="/docs#start">Start free</Button>
+        <Button href="/signup">Start free</Button>
         <Button href="/packages" kind="dark">See all setup commands</Button>
       </div>
     </>
