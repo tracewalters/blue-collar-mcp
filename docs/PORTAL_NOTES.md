@@ -20,6 +20,18 @@ Format: `## <platform>` then dated bullets: what changed, how it was found, how 
 - 2026-11-26: inspector comments (`getInspection`, MCP `get_inspection`). Follows Stanley's `inspection <P> <INS>`: related list `/s/permit2/related/<rid>/MUSW__Inspections__r` (lazy-loads, scroll until the `INS-` link shows), open its `/s/inspection/<id>` record and read label/value pairs (`Inspection Comments`, `Status`, `Inspection Type`, `Completed Date`). Read on demand only, never in the inspection list (one browser session per inspection). **Not yet verified live**: built without credentials; the label parsing is covered by `test/shape-phx.test.ts` on made-up page text.
 - 2026-11-26: booking is gated per adapter (`bookingVerified`). Shape PHX is `false` until the dry run works once against the real portal; until then `proposeInspection` says "Booking for Phoenix is being tested; not available yet." Flip it in `src/adapters/shape-phx.ts` after a live test. The "already scheduled" check lives only in `src/service.ts` now and compares by inspection number when the caller passes one (`inspectionId`), otherwise by type. `pressModalCancel` throws if it cannot press Cancel on an open form, so a dry run never leaves a form that could be saved. Found in the integration review.
 
+## accela (Queen Creek "Development Nexus", Accela Citizen Access)
+- 2026-11-28: adapter `src/adapters/accela.ts` built from public recon only (**no login yet, not verified live**). One adapter for every Accela city: the jurisdiction `baseUrl` is `https://<host>/<AGENCY>` (Queen Creek: `https://aca-prod.accela.com/QC`). `maturity` stays `planned` until a live login run works.
+- URLs: town page `queencreekaz.gov/.../development-nexus-home` blocks curl (403) but works in Chromium. New portal shell `https://qc-prod.accela.com/portal/` (Angular, dotCMS) only links into classic ACA `https://aca-prod.accela.com/QC/...`. All data lives in classic ACA.
+- Login: Accela Civic ID = FusionAuth at `login.accela.com` (OAuth2 code flow, client `da2d05a1-...`, redirect `/QC/SSO/FaResponse.aspx`). `/QC/Login.aspx` redirects there. Form: `#username`, `#password`, submit button, hidden `captcha_token` (CAPTCHA may switch on), optional "Remember me". MFA: unknown until we have an account (FusionAuth supports it). We sign in with Chromium once, keep the `aca-prod` cookies, then read with plain HTTP.
+- Public (logged out) works: general search `Cap/CapHome.aspx?module=Permits` (async postback on `ctl00$PlaceHolderMain$btnNewSearch`, permit number field `txtGSPermitNumber`, format `Byy-####`, one hit returns a `pageRedirect` to the record). Record page `Cap/CapDetail.aspx?Module=Permits&capID1=PMT26&capID2=00000&capID3=00220&agencyCode=QC` shows status, type, work location, description.
+- Inspections are NOT in the first HTML: the page fires an async postback `ctl00$PlaceHolderMain$InspectionList$btnRefreshGridView` (panel `...InspectionList$inspectionUpdatePanel`). Plain HTTP works if you send all hidden fields, `ctl00$PlaceHolderMain$addForDetailPage$collection=rdoExistCollection`, `X-MicrosoftAjax: Delta=true` and a `Referer`; without them you get `Error.aspx`. Completed list is 5 per page, "Next" is another postback (`gvListCompleted$ctl08$ctl04`). Responses are ASP.NET delta format (`len|type|id|content|`); lengths count `\r\n`, so read fixtures without newline conversion.
+- Inspector comments: `Inspection/InspectionDetails.aspx?agencyCode=QC&RecordAltID=<B26-...>&RecordID1..3=<capID>&Module=Permits&Action=ViewDetails&ID=<inspection id>&isPopup=Y`, public. Result comments in `...ResultCommentList..._lblResultComment`. Inspection ids are digits (e.g. 19328603).
+- Fees: page methods on the record page (JSON, same session): `POST Cap/CapDetail.aspx/DisplayFeeNoPaid {"pageNum":"1","moduleName":"Permits"}` (outstanding) and `DisplayFeePaid`. They return an HTML table in `d`. `GetProcessingData {"agencyCode":"QC","moduleName":"Permits"}` returns the workflow (reviews) tree. Documents come from Velosimo (`connect.velosimo.io/app/docqcprod/documents?recordId=PMT26-00000-00220`).
+- **Gotcha: Cloudflare rate limit.** About 20 quick requests (a browser page load counts each asset) got us `429` / error 1015 for 10+ minutes on `Cap/CapHome.aspx`. The adapter sends one request at a time with a 1.2 s gap (`BCMCP_ACCELA_GAP_MS`) and turns 429 into "the city portal is limiting requests".
+- Inspections: phone 480-358-3030, text 844-347-6270. Booking stays off (`bookingVerified: false`); the wizard is `Inspection/InspectionWizardInputType.aspx?...`.
+- Needs to finish: a Queen Creek Development Nexus (Accela Civic ID) account with at least one permit on it, to verify sign-in, the "My Records" list on `CapHome.aspx` when signed in (parser assumes the same `gdvPermitList` grid as search results), and MFA/CAPTCHA behavior.
+
 ## Parity checklists
 
 One checklist per **Portal**: every page and action the city portal has, ticked when Blue Collar MCP can do it. Tick a box only when it works through the **Adapter** (CLI, MCP and dashboard). Add a dated note above when you tick one.
@@ -151,3 +163,35 @@ Source: the portal map in Stanley's SOP (`Knowledge/sops/shapephx-cli.md`) and `
 - New permits since Jan 6, 2026 go through **SPUR**: Tyler EnerGov self service at `https://cityofscottsdaleaz-energovweb.tylerhost.net/apps/selfservice`. Users register an account there; guide linked from https://www.scottsdaleaz.gov/planning-development/scottsdale-spur.
 - Older projects stay on the legacy eServices (`https://eservices.scottsdaleaz.gov/bldgresources/BuildingPermit`); online inspection scheduling there needs the keycode printed on the permit receipt. Inspection Services: 480-312-5750.
 - Next: probe EnerGov's own JSON endpoints first (playbook step 2), then browser automation only if needed. Needs a real SPUR login to test.
+
+### accela parity (Queen Creek) — updated 2026-11-28
+Source: public recon of `aca-prod.accela.com/QC` (logged out). Built = what `src/adapters/accela.ts` does today. Nothing verified signed in yet.
+
+**Sign in** (`login.accela.com`, FusionAuth)
+- [x] Sign in (Chromium, username + password; unverified live)
+- [x] Reuse the saved cookies, sign in again when stale (unverified live)
+
+**Permits list** (`Cap/CapHome.aspx?module=Permits`, signed in = My Records)
+- [x] Permit number, address, type, status (unverified live: parser tested on search-grid markup)
+- [x] Action links per permit
+- [ ] Records in other modules (Engineering, Planning, Code Compliance)
+- [x] Applied date (list Date column)
+
+**Permit record** (`Cap/CapDetail.aspx`)
+- [x] Status, type, work location, description (verified on public pages)
+- [ ] Workflow / reviews (`GetProcessingData`)
+- [ ] Conditions
+- [x] Fees due (`DisplayFeeNoPaid`)
+- [ ] Documents (Velosimo)
+
+**Inspections** (record page, inspections postback)
+- [x] Upcoming (scheduled / pending)
+- [x] Completed, all pages (verified on public pages)
+- [x] Inspector comments (`InspectionDetails.aspx`, verified on public pages)
+- [ ] Request (two-phase, dry run first)
+- [ ] Cancel
+- [ ] Reschedule
+
+**Money**
+- [ ] Invoices, receipts, pay (not planned to automate)
+

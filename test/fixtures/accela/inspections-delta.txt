@@ -1,0 +1,147 @@
+14882|updatePanel|ctl00_PlaceHolderMain_InspectionList_inspectionUpdatePanel|
+        <a id="ctl00_PlaceHolderMain_InspectionList_btnRefreshGridView" tabindex="-1" class="ACA_Hide" href="javascript:WebForm_DoPostBackWithOptions(new WebForm_PostBackOptions(&quot;ctl00$PlaceHolderMain$InspectionList$btnRefreshGridView&quot;, &quot;&quot;, true, &quot;&quot;, &quot;&quot;, false, true))"></a>
+        <div id="ctl00_PlaceHolderMain_InspectionList_upcomingPanel">
+	
+                <div id="ctl00_PlaceHolderMain_InspectionList_divInspectionListUpcoming" class="ACA_Page ACA_Hide">
+                    <h1 class="font13px">
+                        <span id="ctl00_PlaceHolderMain_InspectionList_lblInspectionUpcoming">Upcoming</span>
+                    </h1>
+                    <div id="ctl00_PlaceHolderMain_InspectionList_divInspectionScheduleLink">
+                        <div id="ctl00_PlaceHolderMain_InspectionList_AccelaHeightSeparate1" style="height:5px;clear:both;width:100%;">&nbsp;</div>
+                        <div class="ACA_LinkButton ACA_Title_Color font12px">
+                            <div id="lnkInspectionSchedule" class="NotShowLoading InspectionScheduleLink" 
+                                onclick="showInspectionPopupDialog('/QC/Inspection/InspectionWizardInputType.aspx?agencyCode=QC&RecordID1=PMT99&RecordID2=00000&RecordID3=00001&Module=Permits&ScheduledType=Unknown&Action=None&IsFromWizardPage=False&RequestDayOption=0&ContactChangeOption=Unknown&isPopup=Y&Status=Unknown&NavigationBeginPage=Unknown&TimeOption=Unknow','InspectionWizardPageWidth','lnkInspectionSchedule')">
+                                <span id="ctl00_PlaceHolderMain_InspectionList_lblInspectionSchedule">Schedule or Request an Inspection</span></div>
+                        </div>
+                    </div>
+                    <div id="ctl00_PlaceHolderMain_InspectionList_AccelaHeightSeparate12" style="height:10px;clear:both;width:100%;">&nbsp;</div>
+                    <div id="ctl00_PlaceHolderMain_InspectionList_divInstructions" class="ACA_TabRow_Italic">
+                        <span id="ctl00_PlaceHolderMain_InspectionList_lblEmptyUpcoming" class="ACA_Body_Text ACA_Body_Text_FontSize">You have not added any inspections.<br/></span>
+                        <span id="ctl00_PlaceHolderMain_InspectionList_lblEmptyUpcomingClick" class="ACA_Body_Text ACA_Body_Text_FontSize">Click the link above to schedule or request one.</span>
+                    </div>
+                    <a id='ctl00_PlaceHolderMain_InspectionList_gvListUpcoming_4ValidateGridView_anchor' name='ctl00_PlaceHolderMain_InspectionList_gvListUpcoming_4ValidateGridView_anchor'></a><div class="ACA_Grid_OverFlow">
+
+</div>
+                    
+                </div>
+                
+            
+</div>
+        <div id="ctl00_PlaceHolderMain_InspectionList_completedPanel">
+	
+                <div id="divInspectionListCompleted" class="ACA_Page ACA_Hide">
+                    <div id="ctl00_PlaceHolderMain_InspectionList_AccelaHeightSeparate5" style="height:20px;clear:both;width:100%;">&nbsp;</div>
+                    <h1 class="font13px">
+                        <span id="ctl00_PlaceHolderMain_InspectionList_lblInspectionCompleted">Completed (8)</span>
+                    </h1>
+                    <div id="ctl00_PlaceHolderMain_InspectionList_divInspectionStatusRecordCount">
+                        <span id="ctl00_PlaceHolderMain_InspectionList_lblInspectionStatusRecordCount">Cancelled - 1; Partial - 2; Passed - 2; Rejected - 3</span>
+                    </div>
+                    <div id="ctl00_PlaceHolderMain_InspectionList_AccelaHeightSeparate6" style="height:10px;clear:both;width:100%;">&nbsp;</div>
+                    <a id='ctl00_PlaceHolderMain_InspectionList_gvListCompleted_4ValidateGridView_anchor' name='ctl00_PlaceHolderMain_InspectionList_gvListCompleted_4ValidateGridView_anchor'></a><div class="ACA_Grid_OverFlow">
+	<table class="ACA_GridView ACA_Grid_Caption"  cellspacing="0" role="presentation" border="0" id="ctl00_PlaceHolderMain_InspectionList_gvListCompleted" style="border-width:0px;">
+		<tr class="InspectionListRow">
+			<td class="ACA_AlignLeftOrRightTop">
+                                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td class="ACA_Width45em">
+                                                <span style="color: rgb(51, 51, 51); font-family: Arial; font-size: 1.1em; font-weight: bold;">Rejected</span> <span style="color: rgb(51, 51, 51); font-family: Arial; font-size: 1.2em;">101 Footing Trench and Rebar </span><br><span style="color: rgb(51, 51, 51); font-family: Arial; font-size: 1.1em;">Result by: Inspector X on 03/18/2026 at 12:00 AM</span>
+                                            </td>
+                                            <td>
+                                                &nbsp;&nbsp;
+                                            </td>
+                                            <td valign="top">
+                                                <div class="ACA_LinkButton">
+                                                    <span id="ctl00_PlaceHolderMain_InspectionList_gvListCompleted_ctl02_lblOnlyOneAction"><a id='1111111111' href='javascript:void(0)' onclick="showInspectionPopupDialog('/QC/Inspection/InspectionDetails.aspx?agencyCode=QC&RecordAltID=B26-0001&RecordID1=PMT99&RecordID2=00000&RecordID3=00001&Module=Permits&PublicUserID=PUBLICUSER0&ScheduledType=Unknown&Action=ViewDetails&ID=10008603&IsFromWizardPage=False&RequestDayOption=0&ContactChangeOption=Unknown&isPopup=Y&Status=Unknown&NavigationBeginPage=ViewDetails&TimeOption=Unknow','InspectionDetailsPageWidth','2072026166')" title='View Details'>View Details</a></span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+		</tr><tr class="InspectionListRow">
+			<td class="ACA_AlignLeftOrRightTop">
+                                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td class="ACA_Width45em">
+                                                <span style="color: rgb(51, 51, 51); font-family: Arial; font-size: 1.1em; font-weight: bold;">Passed</span> <span style="color: rgb(51, 51, 51); font-family: Arial; font-size: 1.2em;">101 Footing Trench and Rebar </span><br><span style="color: rgb(51, 51, 51); font-family: Arial; font-size: 1.1em;">Result by: Inspector X on 03/24/2026 at 12:00 AM</span>
+                                            </td>
+                                            <td>
+                                                &nbsp;&nbsp;
+                                            </td>
+                                            <td valign="top">
+                                                <div class="ACA_LinkButton">
+                                                    <span id="ctl00_PlaceHolderMain_InspectionList_gvListCompleted_ctl03_lblOnlyOneAction"><a id='1111111111' href='javascript:void(0)' onclick="showInspectionPopupDialog('/QC/Inspection/InspectionDetails.aspx?agencyCode=QC&RecordAltID=B26-0001&RecordID1=PMT99&RecordID2=00000&RecordID3=00001&Module=Permits&PublicUserID=PUBLICUSER0&ScheduledType=Unknown&Action=ViewDetails&ID=10002225&IsFromWizardPage=False&RequestDayOption=0&ContactChangeOption=Unknown&isPopup=Y&Status=Unknown&NavigationBeginPage=ViewDetails&TimeOption=Unknow','InspectionDetailsPageWidth','2072026166')" title='View Details'>View Details</a></span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+		</tr><tr class="InspectionListRow">
+			<td class="ACA_AlignLeftOrRightTop">
+                                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td class="ACA_Width45em">
+                                                <span style="color: rgb(51, 51, 51); font-family: Arial; font-size: 1.1em; font-weight: bold;">Rejected</span> <span style="color: rgb(51, 51, 51); font-family: Arial; font-size: 1.2em;">107 Reinforced Masonry Pre-Grout </span><br><span style="color: rgb(51, 51, 51); font-family: Arial; font-size: 1.1em;">Result by: Inspector X on 03/30/2026 at 12:00 AM</span>
+                                            </td>
+                                            <td>
+                                                &nbsp;&nbsp;
+                                            </td>
+                                            <td valign="top">
+                                                <div class="ACA_LinkButton">
+                                                    <span id="ctl00_PlaceHolderMain_InspectionList_gvListCompleted_ctl04_lblOnlyOneAction"><a id='1111111111' href='javascript:void(0)' onclick="showInspectionPopupDialog('/QC/Inspection/InspectionDetails.aspx?agencyCode=QC&RecordAltID=B26-0001&RecordID1=PMT99&RecordID2=00000&RecordID3=00001&Module=Permits&PublicUserID=PUBLICUSER0&ScheduledType=Unknown&Action=ViewDetails&ID=10005449&IsFromWizardPage=False&RequestDayOption=0&ContactChangeOption=Unknown&isPopup=Y&Status=Unknown&NavigationBeginPage=ViewDetails&TimeOption=Unknow','InspectionDetailsPageWidth','2072026166')" title='View Details'>View Details</a></span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+		</tr><tr class="InspectionListRow">
+			<td class="ACA_AlignLeftOrRightTop">
+                                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td class="ACA_Width45em">
+                                                <span style="color: rgb(51, 51, 51); font-family: Arial; font-size: 1.1em; font-weight: bold;">Partial</span> <span style="color: rgb(51, 51, 51); font-family: Arial; font-size: 1.2em;">107 Reinforced Masonry Pre-Grout </span><br><span style="color: rgb(51, 51, 51); font-family: Arial; font-size: 1.1em;">Result by: Inspector X on 03/31/2026 at 12:00 AM</span>
+                                            </td>
+                                            <td>
+                                                &nbsp;&nbsp;
+                                            </td>
+                                            <td valign="top">
+                                                <div class="ACA_LinkButton">
+                                                    <span id="ctl00_PlaceHolderMain_InspectionList_gvListCompleted_ctl05_lblOnlyOneAction"><a id='1111111111' href='javascript:void(0)' onclick="showInspectionPopupDialog('/QC/Inspection/InspectionDetails.aspx?agencyCode=QC&RecordAltID=B26-0001&RecordID1=PMT99&RecordID2=00000&RecordID3=00001&Module=Permits&PublicUserID=PUBLICUSER0&ScheduledType=Unknown&Action=ViewDetails&ID=10007087&IsFromWizardPage=False&RequestDayOption=0&ContactChangeOption=Unknown&isPopup=Y&Status=Unknown&NavigationBeginPage=ViewDetails&TimeOption=Unknow','InspectionDetailsPageWidth','2072026166')" title='View Details'>View Details</a></span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+		</tr><tr class="InspectionListRow">
+			<td class="ACA_AlignLeftOrRightTop">
+                                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td class="ACA_Width45em">
+                                                <span style="color: rgb(51, 51, 51); font-family: Arial; font-size: 1.1em; font-weight: bold;">Partial</span> <span style="color: rgb(51, 51, 51); font-family: Arial; font-size: 1.2em;">107 Reinforced Masonry Pre-Grout </span><br><span style="color: rgb(51, 51, 51); font-family: Arial; font-size: 1.1em;">Result by: Inspector X on 04/07/2026 at 12:00 AM</span>
+                                            </td>
+                                            <td>
+                                                &nbsp;&nbsp;
+                                            </td>
+                                            <td valign="top">
+                                                <div class="ACA_LinkButton">
+                                                    <span id="ctl00_PlaceHolderMain_InspectionList_gvListCompleted_ctl06_lblOnlyOneAction"><a id='1111111111' href='javascript:void(0)' onclick="showInspectionPopupDialog('/QC/Inspection/InspectionDetails.aspx?agencyCode=QC&RecordAltID=B26-0001&RecordID1=PMT99&RecordID2=00000&RecordID3=00001&Module=Permits&PublicUserID=PUBLICUSER0&ScheduledType=Unknown&Action=ViewDetails&ID=10000963&IsFromWizardPage=False&RequestDayOption=0&ContactChangeOption=Unknown&isPopup=Y&Status=Unknown&NavigationBeginPage=ViewDetails&TimeOption=Unknow','InspectionDetailsPageWidth','2072026166')" title='View Details'>View Details</a></span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+		</tr><tr class="ACA_Table_Pages ACA_Table_Pages_FontSize" valign="bottom">
+			<td><table class="aca_pagination" align="Center" role="presentation" border="0">
+				<tr>
+					<td class="aca_pagination_td aca_pagination_PrevNext"><span class="aca_simple_text font11px">&lt; Prev</span></td><td class="aca_pagination_td"><span class="SelectedPageButton font11px">1</span></td><td class="aca_pagination_td"><a href="javascript:__doPostBack(&#39;ctl00$PlaceHolderMain$InspectionList$gvListCompleted$ctl08$ctl03&#39;,&#39;&#39;)">2</a></td><td class="aca_pagination_td aca_pagination_PrevNext"><a class="aca_simple_text font11px" href="javascript:__doPostBack(&#39;ctl00$PlaceHolderMain$InspectionList$gvListCompleted$ctl08$ctl04&#39;,&#39;&#39;)">Next &gt;</a></td>
+				</tr>
+			</table></td>
+		</tr>
+	</table>
+</div>
+                    
+                </div>
+                
+            
+</div>
+    |19|hiddenField|__VIEWSTATE|fixture-__VIEWSTATE|20|hiddenField|ACA_CS_FIELD|fixture-ACA_CS_FIELD|
