@@ -43,6 +43,12 @@
       "default": 0,
       "type": "number"
     },
+    "holds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "actions": {
       "type": "array",
       "items": {

@@ -25,7 +25,7 @@
   "name": "Avondale",
   "state": "AZ",
   "platform": "accela",
-  "baseUrl": "https://TODO.invalid"
+  "baseUrl": "https://aca-prod.accela.com/AVONDALE"
  },
  {
   "id": "queen-creek-az",

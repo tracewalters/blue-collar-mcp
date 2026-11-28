@@ -15,6 +15,8 @@ export const Permit = z.object({
   appliedAt: z.string().optional(),
   expiresAt: z.string().optional(),
   feesDue: z.number().default(0),
+  /** Conditions the city put on the permit that can block work or inspections (Accela "conditions", holds). */
+  holds: z.array(z.string()).optional(),
   /** Things the portal currently lets the user do on this permit, e.g. "Request Inspection". */
   actions: z.array(z.string()).optional(),
 });
