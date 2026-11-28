@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import { AskClaude, DashShell, Freshness, Loading, Note, Pill, Problem, SignedOut, StatusChip, limeBtn, useBoard } from "@/components/Dash";
-import { CLOSED, daysFrom, fmtDay, inspLabel, isRecent, lastActivity, money, permitHref, permitLabel, problem, type Inspection, type Me, type Permit } from "@/lib/dash";
+import { api, CLOSED, daysFrom, fmtDay, inspLabel, isRecent, lastActivity, money, permitHref, permitLabel, problem, type Inspection, type Me, type Permit } from "@/lib/dash";
 
-const views = [["recent", "Recent"], ["action", "Needs you"], ["open", "Open"], ["older", "Older"], ["all", "All"]] as const;
+const views = [["recent", "Recent"], ["action", "Needs you"], ["open", "Open"], ["older", "Older"], ["hidden", "Hidden"], ["all", "All"]] as const;
 
 export default function Dashboard() {
   return (
@@ -29,22 +29,37 @@ function Board({ me }: { me: Me }) {
   const board = useBoard();
   const [city, setCity] = useState("all");
   const [view, setView] = useState<(typeof views)[number][0]>("recent");
+  const [hid, setHid] = useState<Set<string> | null>(null);
+  const [err, setErr] = useState("");
 
   if (board.signedOut) return <SignedOut />;
   if (!board.res) return <Loading slow />;
   if (!board.res.ok) return <Problem message={board.res.message} retry={board.fresh.onRefresh} />;
-  const { permits: list, inspections } = board;
-  const cityName = (id: string) => me.connections.find((c) => c.id === id)?.name ?? id;
+  const { permits: everything, inspections } = board;
+  const key = (p: Permit) => `${p.jurisdiction}|${p.id}`;
+  const hiddenSet = hid ?? new Set(board.hidden);
+  const list = everything.filter((p) => !hiddenSet.has(key(p)));
+  const hiddenCount = everything.length - list.length;
+  const toggle = async (p: Permit, hidden: boolean) => {
+    setErr("");
+    const next = new Set(hiddenSet);
+    if (hidden) next.add(key(p)); else next.delete(key(p));
+    setHid(next);
+    if (!hidden && view === "hidden" && everything.filter((x) => next.has(key(x))).length === 0) setView("recent");
+    const r = await api("/hide", { city: p.jurisdiction, id: p.id, hidden });
+    if (!r.ok) { setHid(hiddenSet); setErr(r.message); }
+  };
+  const cityName = (id: string) => { const c = me.cities.find((x) => x.id === id); return c ? `${c.name}, ${c.state}` : id; };
 
   const open = list.filter((p) => !CLOSED.includes(p.status));
   const fixes = list.filter((p) => p.status === "corrections_required").length;
   const week = inspections.filter((i) => i.status === "scheduled" && i.scheduledFor && daysFrom(i.scheduledFor) >= 0 && daysFrom(i.scheduledFor) < 7).length;
   const fees = list.reduce((s, p) => s + (p.feesDue ?? 0), 0);
 
-  const ranked = list
+  const ranked = (view === "hidden" ? everything.filter((p) => hiddenSet.has(key(p))) : list)
     .map((p) => ({ p, x: problem(p, inspections), last: lastActivity(p, inspections) }))
     .filter(({ p }) => city === "all" || p.jurisdiction === city)
-    .filter(({ p, x, last }) => view === "all" || (view === "recent" ? isRecent(last) : view === "older" ? !isRecent(last) : view === "action" ? x.rank < 9 : !CLOSED.includes(p.status)))
+    .filter(({ p, x, last }) => view === "all" || view === "hidden" || (view === "recent" ? isRecent(last) : view === "older" ? !isRecent(last) : view === "action" ? x.rank < 9 : !CLOSED.includes(p.status)))
     .sort((a, b) => b.last.localeCompare(a.last) || a.x.rank - b.x.rank);
 
   const tiles: [string, string, boolean][] = [
@@ -74,24 +89,24 @@ function Board({ me }: { me: Me }) {
         <h2 id="permits" className="text-2xl font-semibold tracking-tight">Permits <span className="text-ink-3">{list.length}</span></h2>
         <p className="mt-1 text-ink-2">Most recent first. Anything quiet for 3 months is under Older.</p>
         <div className="no-scrollbar -mx-1 mt-5 flex gap-1 overflow-x-auto px-1">
-          {views.map(([v, l]) => <Pill key={v} active={view === v} onClick={() => setView(v)}>{l}</Pill>)}
+          {views.filter(([v]) => v !== "hidden" || hiddenCount > 0).map(([v, l]) => <Pill key={v} active={view === v} onClick={() => setView(v)}>{l}{v === "hidden" ? ` ${hiddenCount}` : ""}</Pill>)}
         </div>
-        {me.connections.length > 1 && (
-          <div className="no-scrollbar -mx-1 mt-1 flex gap-1 overflow-x-auto px-1">
-            <Pill active={city === "all"} onClick={() => setCity("all")}>All cities</Pill>
-            {me.connections.map((c) => <Pill key={c.id} active={city === c.id} onClick={() => setCity(c.id)}>{c.name}</Pill>)}
-          </div>
-        )}
+        <div className="no-scrollbar -mx-1 mt-1 flex gap-1 overflow-x-auto px-1" aria-label="City">
+          {me.connections.length > 1 && <Pill active={city === "all"} onClick={() => setCity("all")}>All cities {list.length}</Pill>}
+          {me.connections.map((c) => <Pill key={c.id} active={city === c.id || me.connections.length === 1} onClick={() => setCity(c.id)}>{c.name} {list.filter((p) => p.jurisdiction === c.id).length}</Pill>)}
+        </div>
+        {err && <div className="mt-3" role="alert"><Note tone="bad">{err}</Note></div>}
         <ul className="mt-4 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-panel">
           {ranked.length === 0 && <li className="p-6 text-ink-2">Nothing here. Try another filter.</li>}
           {ranked.map(({ p, x, last }) => {
             const [label, tone] = permitLabel[p.status];
             return (
-              <li key={`${p.jurisdiction}|${p.id}`}>
-                <Link href={permitHref(p)} className="grid gap-3 p-5 hover:bg-panel-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+              <li key={key(p)} className="flex items-stretch">
+                <Link href={permitHref(p)} className="grid min-w-0 flex-1 gap-3 p-5 hover:bg-panel-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                   <div className="min-w-0">
-                    <p className="text-lg font-semibold">{p.address || "No site address"}</p>
-                    <p className="mt-0.5 text-[15px] text-ink-2">{p.type} · <span className="font-mono text-sm">{p.id}</span> · {cityName(p.jurisdiction)}</p>
+                    <p className="text-sm font-semibold uppercase tracking-wide text-lime">{cityName(p.jurisdiction)}</p>
+                    <p className="mt-1 text-lg font-semibold">{p.address || "No site address"}</p>
+                    <p className="mt-0.5 text-[15px] text-ink-2">{p.type} · <span className="font-mono text-sm">{p.id}</span></p>
                     {x.why && x.tone && <div className="mt-2"><Note tone={x.tone}>{x.why}</Note></div>}
                   </div>
                   <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-1">
@@ -99,6 +114,7 @@ function Board({ me }: { me: Me }) {
                     {last && <span className="text-sm text-ink-3">{fmtDay(last).replace(/, \d{4}$/, "")}</span>}
                   </div>
                 </Link>
+                <button type="button" onClick={() => toggle(p, view !== "hidden")} className="shrink-0 px-5 text-[15px] text-ink-3 hover:bg-panel-2 hover:text-ink" aria-label={`${view === "hidden" ? "Unhide" : "Hide"} ${p.id}`}>{view === "hidden" ? "Unhide" : "Hide"}</button>
               </li>
             );
           })}

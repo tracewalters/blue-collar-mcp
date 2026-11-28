@@ -21,9 +21,9 @@ export const registerPermits = (server: McpServer, opts: { writes: boolean; conn
   }, ({ key }) => run(() => svc.connectionStatus(key))());
   
   server.registerTool("list_permits", {
-    description: "List permits across connected city portals." + FRESH,
-    inputSchema: { city, refresh }, annotations: readOnly,
-  }, ({ city, refresh }) => run(() => svc.listPermits(city, { refresh, wait: true }))());
+    description: "List permits across connected city portals. Permits the user hid on the dashboard are left out unless includeHidden is true." + FRESH,
+    inputSchema: { city, refresh, includeHidden: z.boolean().optional() }, annotations: readOnly,
+  }, ({ city, refresh, includeHidden }) => run(() => svc.listPermits(city, { refresh, wait: true, includeHidden }))());
   
   server.registerTool("list_jobs", {
     description: "Jobs: permits grouped by site address across all connected cities, with the names the user gave them. Permits with no address are listed as ungrouped.",

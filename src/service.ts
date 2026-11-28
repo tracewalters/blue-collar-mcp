@@ -5,6 +5,7 @@ import { getAdapter, portalDate, type Credentials } from "./adapter.ts";
 import { getJurisdiction, listJurisdictions } from "./jurisdictions.ts";
 import { getProfile } from "./profile.ts";
 import { groupJobs, mergeJobs, renameJob } from "./jobs.ts";
+import { permitKey, readHidden, setHidden } from "./hidden.ts";
 import { Plan } from "./schemas.ts";
 import { editJson, loadSecret, readDb, readJson, removeConnection, saveConnection, writeDb } from "./store.ts";
 import { home, open, seal } from "./vault.ts";
@@ -134,9 +135,20 @@ const cityInspections = (id: string, o?: ReadOpts) => {
 const cities = (jurisdictionId?: string) => (jurisdictionId ? [getJurisdiction(jurisdictionId).id] : listConnections().map((c) => c.id));
 
 /** Reads fan out to every connected city unless one is named. */
-export async function listPermits(jurisdictionId?: string, opts: ReadOpts = {}) {
+export async function listPermits(jurisdictionId?: string, opts: ReadOpts & { includeHidden?: boolean } = {}) {
   const parts = await Promise.all(cities(jurisdictionId).map((id) => cityPermits(id, opts)));
-  return { permits: parts.flatMap((p) => p.data), ...freshness(parts) };
+  const all = parts.flatMap((p) => p.data), hidden = readHidden();
+  const gone = new Set(hidden);
+  return { permits: opts.includeHidden ? all : all.filter((p) => !gone.has(permitKey(p.jurisdiction, p.id))), hidden, ...freshness(parts) };
+}
+
+/** Hide (or show again) a permit the city never archives. Nothing changes at the city. */
+export async function hidePermit(city: string, permitId: string, hidden: boolean) {
+  const j = getJurisdiction(city);
+  const found = (await cityPermits(j.id)).data.find((p) => p.id === permitId);
+  if (!found) throw new Error(`Permit ${permitId} not found in ${j.name}`);
+  await setHidden(j.id, found.id, hidden);
+  return { ok: true, hidden };
 }
 
 /** Permits grouped into Jobs by site address, with the Company's renames and merges applied. */
