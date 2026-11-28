@@ -59,6 +59,8 @@ export function Footer() {
           {[{ href: "/dashboard", label: "Dashboard" }, ...links, { href: "/account", label: "Account" }, { href: "/billing", label: "Billing" }].map((l) => (
             <li key={l.href}><Link href={l.href} className="hover:text-ink">{l.label}</Link></li>
           ))}
+          <li><Link href="/privacy" className="hover:text-ink">Privacy</Link></li>
+          <li><Link href="/terms" className="hover:text-ink">Terms</Link></li>
           <li><a href={GITHUB} className="hover:text-ink">GitHub</a></li>
         </ul>
       </div>
