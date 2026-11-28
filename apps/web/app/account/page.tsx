@@ -28,42 +28,48 @@ const card = "rounded-2xl border border-line bg-panel p-6";
 const field = "mt-1 min-h-12 w-full rounded-xl border border-line bg-panel-2 px-4 text-[16px] text-ink";
 const label = "text-xs font-medium uppercase tracking-wide text-ink-3";
 
+const tools = [
+  ["Claude", ["Open Settings, then Connectors.", "Choose Add custom connector and paste the link.", "Sign in when asked, then start a new chat and say “set up my permits”."]],
+  ["ChatGPT", ["Open Settings, then Connectors. Turn on Developer mode if you see it.", "Create a connector, paste the link, and choose OAuth for authentication.", "Sign in when asked, then ask about your permits."]],
+  ["Other", ["Any AI app that supports remote MCP servers works.", "Paste the link as the server URL and choose OAuth or sign-in if it asks.", "Sign in with the account you just made."]],
+] as const;
+
 function Connector() {
+  const [tool, setTool] = useState(0);
   const [url, setUrl] = useState("");
   const [copied, setCopied] = useState(false);
+  const [priv, setPriv] = useState("");
   const [err, setErr] = useState("");
-  useEffect(() => {
-    const u = sessionStorage.getItem("bc-connector");
-    if (u) { setUrl(u); return; }
-    // Just signed up with Google: nothing is connected yet, so make the first link now.
-    if (new URLSearchParams(window.location.search).get("welcome")) api<{ connectorUrl: string }>("/connector/reset", {}).then((r) => { if (r.ok) { sessionStorage.setItem("bc-connector", r.data.connectorUrl); setUrl(r.data.connectorUrl); window.history.replaceState(null, "", "/account"); } });
-  }, []);
+  useEffect(() => { setUrl(`${window.location.origin}/mcp`); setPriv(sessionStorage.getItem("bc-connector") ?? ""); }, []);
+  const copy = async (v: string) => { await navigator.clipboard.writeText(v); setCopied(true); setTimeout(() => setCopied(false), 2000); };
   const reset = async () => {
-    if (!window.confirm("Make a new link? The old one stops working, so you will need to add the new one to Claude.")) return;
+    if (!window.confirm("Make a new private link? The old one stops working.")) return;
     setErr("");
     const r = await api<{ connectorUrl: string }>("/connector/reset", {});
-    if (r.ok) { sessionStorage.setItem("bc-connector", r.data.connectorUrl); setUrl(r.data.connectorUrl); } else setErr(r.message);
+    if (r.ok) { sessionStorage.setItem("bc-connector", r.data.connectorUrl); setPriv(r.data.connectorUrl); } else setErr(r.message);
   };
-  const copy = async () => { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); };
   return (
     <section className={card} aria-labelledby="conn">
-      <h2 id="conn" className="text-xl font-semibold">Connect Claude</h2>
-      {url ? (
-        <>
-          <p className="mt-2 text-ink-2">Copy this link. It is private, like a password.</p>
-          <p className="mt-4 break-all rounded-xl border border-line bg-panel-2 p-4 font-mono text-sm">{url}</p>
-          <button type="button" onClick={copy} className={`${limeBtn} mt-4`}>{copied ? "Copied" : "Copy link"}</button>
-          <ol className="mt-6 list-decimal space-y-2 pl-5 text-[15px] text-ink-2">
-            <li>In Claude, open Settings, then Connectors.</li>
-            <li>Choose Add custom connector. Paste the link.</li>
-            <li>Start a new chat and say “set up my permits”.</li>
-          </ol>
-        </>
-      ) : (
-        <p className="mt-2 text-ink-2">We only keep a scrambled copy of your link, so we can't show it again. Lost it, or want to cut off access? Make a new one.</p>
-      )}
-      <button type="button" onClick={reset} className={`${darkBtn} mt-4`}>Make a new link</button>
-      {err && <p className="mt-3 text-[15px] text-bad" role="alert">{err}</p>}
+      <h2 id="conn" className="text-xl font-semibold">Connect your AI</h2>
+      <p className="mt-2 text-ink-2">One link for every AI app. You sign in with this account when asked.</p>
+      <p className="mt-4 break-all rounded-xl border border-line bg-panel-2 p-4 font-mono text-sm">{url}</p>
+      <button type="button" onClick={() => copy(url)} className={`${limeBtn} mt-4`}>{copied ? "Copied" : "Copy link"}</button>
+      <div className="no-scrollbar mt-6 flex gap-1 overflow-x-auto" role="tablist">
+        {tools.map(([n], i) => (
+          <button key={n} type="button" role="tab" aria-selected={tool === i} onClick={() => setTool(i)} className={`min-h-11 rounded-full px-4 text-[15px] ${tool === i ? "bg-white/10 text-ink" : "text-ink-3 hover:text-ink-2"}`}>{n}</button>
+        ))}
+      </div>
+      <ol className="mt-3 list-decimal space-y-2 pl-5 text-[15px] text-ink-2">{tools[tool][1].map((t) => <li key={t}>{t}</li>)}</ol>
+      <details className="mt-6 border-t border-line pt-4">
+        <summary className="cursor-pointer text-[15px] text-ink-3">Private link, for apps with no sign-in</summary>
+        <p className="mt-3 text-[15px] text-ink-2">Works without signing in, so treat it like a password. We only keep a scrambled copy, so a lost one needs a new link.</p>
+        {priv && <p className="mt-3 break-all rounded-xl border border-line bg-panel-2 p-4 font-mono text-sm">{priv}</p>}
+        <div className="mt-3 flex gap-2">
+          {priv && <button type="button" onClick={() => copy(priv)} className={darkBtn}>Copy</button>}
+          <button type="button" onClick={reset} className={darkBtn}>Make a new private link</button>
+        </div>
+        {err && <p className="mt-3 text-[15px] text-bad" role="alert">{err}</p>}
+      </details>
     </section>
   );
 }

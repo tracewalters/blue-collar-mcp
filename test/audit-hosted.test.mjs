@@ -26,7 +26,7 @@ test('built hosted MCP initializes, lists brain tools, and restricts access to p
   const firstLog = once(proc.stdout, 'data');
   try {
     assert.match(String((await Promise.race([firstLog, stop]))[0]), /hosted on/);
-    assert.equal((await fetch(host + '/mcp', { signal: AbortSignal.timeout(2000) })).status, 404);
+    assert.equal((await fetch(host + '/mcp', { signal: AbortSignal.timeout(2000) })).status, 401);
     assert.equal((await fetch(a, { signal: AbortSignal.timeout(2000) })).status, 405);
     for (const endpoint of [a, b]) {
       const client = new Client({ name:'audit', version:'1.0.0' });

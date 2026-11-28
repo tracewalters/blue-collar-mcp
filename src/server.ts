@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
+import { oauthFns, oauthRoute, unauthorized, type OAuthDeps } from "./oauth.ts";
 import { BRAIN_INSTRUCTIONS, registerBrain } from "./brain/tools.ts";
 import { requestInfo } from "./brain/notes.ts";
 import { registerIngest } from "./brain/ingest-tools.ts";
@@ -220,6 +221,12 @@ const buildServer = (tenant: { id: string }, dash: string) => {
   return server;
 };
 
+const oauthDeps = (base: string): OAuthDeps => ({
+  base, sign,
+  session: (req) => { const s = check(cookie(req).bc_session, "sess"); return s && tenantByHash(s.tenant) ? s.tenant : null; },
+  tenantName: (id) => readTenants()[id]?.name ?? null,
+});
+
 const handle = async (req: IncomingMessage, res: ServerResponse) => {
   const url = req.url ?? "";
   const base = process.env.BCMCP_PUBLIC_URL ?? `http://${req.headers.host}`;
@@ -251,8 +258,10 @@ const handle = async (req: IncomingMessage, res: ServerResponse) => {
   if (url === "/auth/google" && gid && gsecret) {
     if (tooMany(`auth:${req.headers["x-forwarded-for"] ?? req.socket.remoteAddress}`)) return json(res, 429, { error: "Too many tries. Wait a minute." });
     const state = randomBytes(16).toString("hex");
+    const next = new URL(url, base).searchParams.get("next") ?? "";
+    const nextCookie = /^\/oauth\/authorize\?/.test(next) ? `bc_next=${encodeURIComponent(next)}; Path=/auth; Max-Age=600; HttpOnly; Secure; SameSite=Lax` : "bc_next=; Path=/auth; Max-Age=0";
     const q = new URLSearchParams({ client_id: gid, redirect_uri: `${base}/auth/google/callback`, response_type: "code", scope: "openid email profile", state, prompt: "select_account" });
-    res.writeHead(302, { location: `${process.env.BCMCP_GOOGLE_AUTH_URL ?? "https://accounts.google.com/o/oauth2/v2/auth"}?${q}`, "set-cookie": `bc_oauth=${state}; Path=/auth; Max-Age=600; HttpOnly; Secure; SameSite=Lax` }).end();
+    res.writeHead(302, { location: `${process.env.BCMCP_GOOGLE_AUTH_URL ?? "https://accounts.google.com/o/oauth2/v2/auth"}?${q}`, "set-cookie": [`bc_oauth=${state}; Path=/auth; Max-Age=600; HttpOnly; Secure; SameSite=Lax`, nextCookie] }).end();
     return;
   }
   if (url.startsWith("/auth/google/callback") && gid && gsecret) {
@@ -273,7 +282,8 @@ const handle = async (req: IncomingMessage, res: ServerResponse) => {
         tenant = hash(secret); fresh = true;
         addAccount(email, randomBytes(24).toString("hex"), tenant); // nobody knows this password; Google is the way in
       }
-      res.writeHead(302, { location: fresh ? "/account?welcome=1" : "/dashboard", "set-cookie": [sessionCookie(tenant), "bc_oauth=; Path=/auth; Max-Age=0"] }).end();
+      const next = decodeURIComponent(cookie(req).bc_next ?? "");
+      res.writeHead(302, { location: /^\/oauth\/authorize\?/.test(next) ? next : fresh ? "/account?welcome=1" : "/dashboard", "set-cookie": [sessionCookie(tenant), "bc_oauth=; Path=/auth; Max-Age=0", "bc_next=; Path=/auth; Max-Age=0"] }).end();
     } catch { fail(); }
     return;
   }
@@ -287,15 +297,22 @@ const handle = async (req: IncomingMessage, res: ServerResponse) => {
     return;
   }
 
+  if (await oauthRoute(req, res, oauthDeps(base))) return;
+
+  // Public URL with sign-in: /mcp plus a bearer token. The older secret link /t/<secret>/mcp keeps working.
   const m = url.match(/^\/t\/([\w-]+)\/(mcp|export\.tar\.gz)\/?$/);
-  const tenant = m ? tenantByHash(hash(m[1])) : null;
-  if (!tenant || !m) { res.writeHead(404).end("Not found"); return; }
-  if (m[2] === "export.tar.gz") {
+  const open = /^\/mcp\/?(\?.*)?$/.test(url);
+  if (open && req.method === "OPTIONS") { res.writeHead(204, { "access-control-allow-origin": "*", "access-control-allow-headers": "authorization, content-type, mcp-session-id, mcp-protocol-version", "access-control-allow-methods": "GET, POST, DELETE, OPTIONS", "access-control-expose-headers": "www-authenticate, mcp-session-id" }).end(); return; }
+  const bearerTenant = open ? oauthFns(oauthDeps(base)).bearer(req) : null;
+  if (open && (!bearerTenant || !tenantByHash(bearerTenant))) return unauthorized(res, base);
+  const tenant = open ? tenantByHash(bearerTenant!) : m ? tenantByHash(hash(m[1])) : null;
+  if (!tenant || (!m && !open)) { res.writeHead(404).end("Not found"); return; }
+  if (m && m[2] === "export.tar.gz") {
     res.writeHead(200, { "content-type": "application/gzip", "content-disposition": 'attachment; filename="company-brain.tar.gz"' });
     spawn("tar", ["czf", "-", "-C", tenant.dir, "."]).stdout.pipe(res);
     return;
   }
-  const ctx = { exportUrl: `${base}/t/${m[1]}/export.tar.gz`, tenant: tenant.id };
+  const ctx = { exportUrl: m ? `${base}/t/${m[1]}/export.tar.gz` : "", tenant: tenant.id };
   const sid = req.headers["mcp-session-id"] as string | undefined;
 
   // Stateful path: only for clients that can show forms (elicitation). They need a session so the form answer finds its tool call.
