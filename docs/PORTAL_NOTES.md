@@ -146,3 +146,8 @@ Source: the portal map in Stanley's SOP (`Knowledge/sops/shapephx-cli.md`) and `
 
 **Ours, built on top of the portal**
 - [x] **Jobs**: permits grouped by site address, rename and merge (2026-11-26)
+
+## Scottsdale (found 2026-11-28, not built yet)
+- New permits since Jan 6, 2026 go through **SPUR**: Tyler EnerGov self service at `https://cityofscottsdaleaz-energovweb.tylerhost.net/apps/selfservice`. Users register an account there; guide linked from https://www.scottsdaleaz.gov/planning-development/scottsdale-spur.
+- Older projects stay on the legacy eServices (`https://eservices.scottsdaleaz.gov/bldgresources/BuildingPermit`); online inspection scheduling there needs the keycode printed on the permit receipt. Inspection Services: 480-312-5750.
+- Next: probe EnerGov's own JSON endpoints first (playbook step 2), then browser automation only if needed. Needs a real SPUR login to test.
