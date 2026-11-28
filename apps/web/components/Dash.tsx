@@ -172,7 +172,7 @@ function NeedsLogin({ n }: { n: number }) {
 
 /** Permits and inspections for the whole company, each kept fresh, with one freshness row for both. */
 export function useBoard() {
-  const permits = useFresh<Permits>("/permits");
+  const permits = useFresh<Permits>("/permits?includeHidden=1");
   const insp = useFresh<Inspections>("/inspections");
   const signedOut = [permits.res, insp.res].some((r) => r && !r.ok && r.signedOut);
   const p = permits.res?.ok ? permits.res.data : null;
@@ -181,6 +181,7 @@ export function useBoard() {
     signedOut,
     res: permits.res,
     permits: p?.permits ?? [],
+    hidden: p?.hidden ?? [],
     inspections: i?.inspections ?? [],
     inspLoading: !insp.res,
     inspFailed: insp.res?.ok === false,

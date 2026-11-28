@@ -23,7 +23,7 @@ export interface Me { account?: { email: string | null }; company: string; userN
 
 /** Every read says when the city portal was last checked (ADR 0002: refresh on open when older than ~15 min). */
 export interface Fresh { fetchedAt: string | null; ageMinutes: number | null; refreshing: boolean; refreshError?: string }
-export type Permits = Fresh & { permits: Permit[] };
+export type Permits = Fresh & { permits: Permit[]; hidden?: string[] };
 export type Inspections = Fresh & { inspections: Inspection[] };
 
 /** "just now", "4 min ago", "2 h ago", "Nov 24". */

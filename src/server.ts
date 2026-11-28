@@ -159,7 +159,8 @@ const api = async (req: IncomingMessage, res: ServerResponse, path: string) => {
         return json(res, 200, saveProfile({ cities }));
       }
       const refresh = q.get("refresh") === "1";
-      if (path === "/permits") return json(res, 200, await svc.listPermits(q.get("city") ?? undefined, { refresh }));
+      if (path === "/permits") return json(res, 200, await svc.listPermits(q.get("city") ?? undefined, { refresh, includeHidden: q.get("includeHidden") === "1" }));
+      if (path === "/hide" && req.method === "POST") { const b = z.object({ city: z.string(), id: z.string(), hidden: z.boolean() }).parse(await body(req)); return json(res, 200, await svc.hidePermit(b.city, b.id, b.hidden)); }
       if (path === "/inspections") return json(res, 200, await svc.listInspections(q.get("city") ?? undefined, { refresh }));
       if (path === "/inspection") return json(res, 200, await svc.getInspection(q.get("city")!, q.get("permit")!, q.get("id")!));
       if (path === "/jobs") return json(res, 200, await svc.listJobs());
