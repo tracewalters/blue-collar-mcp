@@ -1,10 +1,11 @@
+import { HarnessRotator } from "@/components/HarnessRotator";
 import Link from "next/link";
 import { Button, Card, IconTile, SectionTitle } from "@/components/ui";
 import { PackageRow } from "@/components/Previews";
 import { packages, rulePacks, trades } from "@/lib/content";
 
 const steps = [
-  ["Add it to Claude", "The owner adds it once. Each person signs in."],
+  ["Add it to your AI", "The owner adds it once. Each person signs in."],
   ["Connect your city", "Sign in to your permit portal on your private dashboard."],
   ["Ask in plain English", "“Which inspections are this week?”"],
 ];
@@ -20,13 +21,13 @@ export default function Home() {
           Permits is live. More packages coming later.
         </p>
         <h1 className="display mx-auto mt-8 max-w-5xl text-5xl sm:text-7xl lg:text-[88px]">
-          Every permit, <span className="text-lime">one place</span>, right in Claude
+          Every permit, <span className="text-lime">one place</span>, right in <HarnessRotator />
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-lg text-ink-2">
-          Connect your city permit portals once. Ask Claude what needs you. See it all on a private dashboard.
+          Connect your city permit portals once. Ask your AI what needs you. See it all on a private dashboard.
         </p>
         <div className="mt-9 flex flex-wrap justify-center gap-3">
-          <Button href="/docs#start" kind="white">Add Blue Collar to Claude</Button>
+          <Button href="/signup" kind="white">Add Blue Collar to your AI</Button>
           <Button href="/how-it-works" kind="dark">How does setup work?</Button>
         </div>
         <ul className="no-scrollbar mx-auto mt-14 flex max-w-4xl gap-2 overflow-x-auto sm:flex-wrap sm:justify-center">
@@ -50,7 +51,7 @@ export default function Home() {
       <section aria-labelledby="pk" className="mt-28 grid grid-cols-1 gap-10 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
           <h2 id="pk" className="text-2xl font-semibold tracking-tight">Setup commands <span className="text-ink-3">{packages.length}</span></h2>
-          <p className="mt-2 text-ink-2">Type one in Claude. It walks you through the rest.</p>
+          <p className="mt-2 text-ink-2">Type one in your AI. It walks you through the rest.</p>
           <ul className="no-scrollbar mt-6 flex gap-1 overflow-x-auto lg:flex-col">
             {packages.map((p, i) => (
               <li key={p.id} className="shrink-0">
