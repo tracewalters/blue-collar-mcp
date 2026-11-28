@@ -16,7 +16,7 @@ import { home } from "../vault.ts";
 const BASE = "https://shapephx.phoenix.gov";
 type Sess = { state: unknown; user: string; pass: string };
 
-const chromePath = () => {
+export const chromePath = () => {
   if (process.env.PLAYWRIGHT_CHROMIUM) return process.env.PLAYWRIGHT_CHROMIUM;
   const root = join(homedir(), ".cache", "ms-playwright");
   const d = existsSync(root) ? readdirSync(root).filter((x) => x.startsWith("chromium-")).sort().at(-1) : undefined;

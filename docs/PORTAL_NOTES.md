@@ -151,3 +151,49 @@ Source: the portal map in Stanley's SOP (`Knowledge/sops/shapephx-cli.md`) and `
 - New permits since Jan 6, 2026 go through **SPUR**: Tyler EnerGov self service at `https://cityofscottsdaleaz-energovweb.tylerhost.net/apps/selfservice`. Users register an account there; guide linked from https://www.scottsdaleaz.gov/planning-development/scottsdale-spur.
 - Older projects stay on the legacy eServices (`https://eservices.scottsdaleaz.gov/bldgresources/BuildingPermit`); online inspection scheduling there needs the keycode printed on the permit receipt. Inspection Services: 480-312-5750.
 - Next: probe EnerGov's own JSON endpoints first (playbook step 2), then browser automation only if needed. Needs a real SPUR login to test.
+
+## accela (Avondale, Accela Citizen Access)
+- 2026-11-28: found by public recon (no login). Avondale runs **Accela Citizen Access (ACA) 26.4** at `https://aca-prod.accela.com/AVONDALE` (agency code `AVONDALE`). The town site `avondaleaz.gov` sits behind a Cloudflare challenge; the ACA host does not. One adapter `src/adapters/accela.ts` serves any ACA city: the jurisdiction's `baseUrl` is the agency root.
+- **Official API?** Accela's Construct API (`apis.accela.com/v4`) needs an `x-accela-appid` from a registered developer app, and the agency must allow it. Not used: the ACA pages need nothing but the user's own login.
+- **Sign in**: `/Login.aspx` holds an iframe `/AngularUI/CommunityView/login-panel?inLegacyUI=true` with `#username` (user name or email), `input[type=password]`, button `SIGN IN`. SSO is off, and `/api/Settings/GetRecaptchaInfo` says there is no CAPTCHA on login. MFA is unknown until a real login. Logged out, `/Cap/MyRecordsCap.aspx` redirects to `Login.aspx`, so that redirect is the "session expired" signal.
+- **Modules**: Building (Building/Fire tab), Planning, Engineering, Licenses, SpecialEvents, ABC. Logged out, only the **Engineering** search is public. Building and Planning searches redirect to login, so residential permits need the user's account.
+- **Record grid** (`gdvPermitList`, the same control in the public search and My Records): `tr.ACA_TabRow_Odd|Even`, spans `_lblUpdatedTime` (date), `_lblPermitNumber1` (linked) or `_lblPermitNumber` (unfinished `TMP` application, no link), `_lblType`, `_lblDescription`, `_lblProjectName`, `_lblExpirationDate`, `_lblStatus`, `_lblPermitAddress`. The record link is `/Cap/CapDetail.aspx?Module=..&capID1=26CAP&capID2=00000&capID3=00262&agencyCode=AVONDALE`. Pages hold 10 rows each, with a `Next >` postback link.
+- **Record page**: status `_lblRecordStatus`. Tabs: Record Details, Processing Status, Inspections, Fees. XHR page methods: `CapDetail.aspx/GetProcessingData` (workflow HTML, `{"agencyCode","moduleName"}`), `DisplayFeeNoPaid` / `DisplayFeePaid` (fee HTML in `d`; empty logged out).
+- **Inspections** are public on Engineering records. `InspectionList` holds `gvListUpcoming` and `gvListCompleted`, which load by postback after the page itself. Row `tr.InspectionListRow`, spans: `06/22/2027 at TBD Scheduled`, `Final Walk-thru (539944)`, `Inspector: Name`. Its "View Details" opens `/Inspection/InspectionDetails.aspx?...&ID=<id>`, which can be opened directly. On that page: `_lblStatus`, `_lblStatusDate`, and hidden grids `gdvInspectionResultCommentList` (inspector comments) and `gdvInspectionStatusHistoryList`. Logged out, **no completed inspections** were visible on any of 9 records checked, so the completed-row markup in the fixture is made up. Re-record it when we have a login.
+- **Rate limit**: about 25 browser page loads in a few minutes got HTTP **429** on `CapHome.aspx` for several minutes. The adapter waits 1.5 s before every page load, reads inspections only on issued permits, and reports 429 as "portal is busy".
+- **Not verified live** (needs a login): sign-in, My Records layout and paging, fees text (`feesDue` expects `Outstanding: ... Paid:`), conditions/holds markup (`holds` is a guess), and completed inspection rows. `maturity` stays `planned` (the city is not offered yet) and `bookingVerified` stays `false`.
+
+### accela parity (Avondale) — updated 2026-11-28
+Source: public recon of `aca-prod.accela.com/AVONDALE` (logged out). Built = what `src/adapters/accela.ts` does today (unverified live).
+
+**Sign in** (`/Login.aspx`, iframe `login-panel`)
+- [x] Sign in (unverified)
+- [x] Reuse the saved session, sign in again when sent to Login.aspx
+
+**Permits list** (`/Cap/MyRecordsCap.aspx`)
+- [x] Record number, type, description, status, address (unverified on My Records)
+- [x] Action links per record (whatever links the row has)
+- [ ] Records shared with me / collections (`/MyCollection/MyCollectionManagement.aspx`)
+- [x] Date and expiry date
+
+**Permit record** (`/Cap/CapDetail.aspx`)
+- [x] Status
+- [ ] Record details, work location, contacts, licensed professional
+- [ ] Processing status (workflow tasks and review comments, `GetProcessingData`)
+- [x] Holds (conditions with Hold/Lock severity; guessed markup)
+- [x] Fees due (Fees tab, outstanding part)
+- [ ] Attachments and download
+
+**Inspections** (record page `InspectionList`)
+- [x] Upcoming (scheduled, pending)
+- [x] Completed (made-up fixture, verify live)
+- [x] Inspector comments (`InspectionDetails.aspx` result comments)
+- [ ] Request (two-phase): refused until `bookingVerified`
+- [ ] Cancel
+- [ ] Reschedule
+
+**Money**
+- [ ] Cart and pay (`/ShoppingCart/ShoppingCart.aspx`): not planned to automate
+
+**New work**
+- [ ] New application (`/Customization/common/chooser.aspx`)
