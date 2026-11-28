@@ -81,6 +81,7 @@ function Checklist({ me, profile: first }: { me: Me; profile: Profile }) {
         {others.length > 0 && (
           <section aria-labelledby="more">
             <h2 id="more" className="text-xl font-semibold tracking-tight">Add more cities</h2>
+            <p className="mt-1 text-[15px] text-ink-3">Cities marked Coming soon aren't connectable yet. Request one and we build requested cities in order.</p>
             {msg && <div className="mt-3" role="alert"><Note tone="bad">{msg}</Note></div>}
             <ul className="mt-4 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-panel">
               {others.map((c) => (
@@ -89,7 +90,7 @@ function Checklist({ me, profile: first }: { me: Me; profile: Profile }) {
                     <span className="text-ink-2">{c.name}, {c.state}</span>
                     {!isBuilt(c) && <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs font-semibold text-ink-3">Coming soon</span>}
                   </span>
-                  <button type="button" disabled={!!adding} onClick={() => add(c)} className={darkBtn}>{adding === c.id ? "Adding…" : "Add"}</button>
+                  <button type="button" disabled={!!adding} onClick={() => add(c)} className={darkBtn}>{adding === c.id ? "Adding…" : isBuilt(c) ? "Add" : "Request"}</button>
                 </li>
               ))}
             </ul>
