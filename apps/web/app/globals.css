@@ -49,3 +49,15 @@ body { background: var(--bg); color: var(--ink); font-family: var(--font-sans); 
 .no-scrollbar { scrollbar-width: none; }
 /* Login progress: fills most of the way over ~30 s, never claims done. */
 @keyframes fill { from { transform: scaleX(.04); } to { transform: scaleX(.92); } }
+
+/* HarnessRotator: 5 tools + a repeat of the first, so the loop is seamless. Each holds, then rolls up one line. */
+.harness-track { animation: harness-roll 13s ease-in-out infinite; }
+@keyframes harness-roll {
+  0%, 16% { transform: translateY(0); }
+  20%, 36% { transform: translateY(-16.667%); }
+  40%, 56% { transform: translateY(-33.333%); }
+  60%, 76% { transform: translateY(-50%); }
+  80%, 96% { transform: translateY(-66.667%); }
+  100% { transform: translateY(-83.333%); }
+}
+@media (prefers-reduced-motion: reduce) { .harness-track { animation: none; } }
